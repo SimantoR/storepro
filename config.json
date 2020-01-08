@@ -1,0 +1,1 @@
+{"lock":{"refunds":false,"voids":true},"misc":{"keyboard":true,"sound":false},"printOnSale":true,"cashDrawer":{"enabled":true,"openOnSale":true,"requireManager":false},"payment":{"enableGiftCard":false,"useLoyaltyCard":true,"enableExternalPayments":false}}
