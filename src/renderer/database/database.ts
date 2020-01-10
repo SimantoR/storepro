@@ -1,141 +1,165 @@
 import {
-    PrimaryGeneratedColumn,
-    Column,
-    Entity,
-    Connection,
-    createConnection,
-    JoinTable,
-    ManyToMany,
-    EntityManager,
-    PrimaryColumn,
-    CreateDateColumn,
-    UpdateDateColumn
-} from "typeorm"
+  Entity,
+  Column,
+  PrimaryColumn,
+  PrimaryGeneratedColumn,
+  ManyToMany,
+  OneToOne,
+  JoinTable,
+  createConnection,
+  EntityManager,
+  OneToMany,
+  ManyToOne,
+  JoinColumn
+} from 'typeorm';
 
-//#region Entities
-@Entity()
-export class Product {
-    @PrimaryColumn('text')
-    sku: string;
-
-    @Column('text')
-    name: string;
-
-    @Column({ name: 'cost_price', type: 'real' })
-    costPrice: number;
-
-    @Column({ name: 'sell_price', type: 'real' })
-    sellPrice: number;
-
-    @Column('datetime', { name: 'creation_date' })
-    creationDate: Date;
-
-    @Column('datetime', { name: 'mod_date' })
-    modificationDate: Date
-
-    @ManyToMany(type => Category, { cascade: true })
-    @JoinTable({ name: 'product-categories' })
-    categories: Promise<Category[]>;
-
-    static create = (props: Product) => {
-        let product = new Product()
-        product.sku = props.sku
-        product.name = props.name
-        product.costPrice = props.costPrice
-        product.sellPrice = props.sellPrice
-        product.creationDate = props.modificationDate
-        product.modificationDate = props.modificationDate
-        product.categories = props.categories
-
-        return product
-    }
+//#region Enums
+export enum UnitType {
+  kg = 0,
+  lb = 1,
+  gm = 2,
+  ltr = 3
 }
 
-@Entity()
-export class Category {
-    @PrimaryGeneratedColumn('rowid')
-    id: string;
-
-    @Column("text")
-    name: string;
-
-    @Column('datetime', { name: 'creation_date' })
-    creationDate: Date;
-
-    static create = (props: { name: string, creationDate: Date }) => {
-        let category = new Category()
-        category.name = props.name
-        category.creationDate = props.creationDate
-        return category
-    }
+export enum PaymentMethod {
+  cash = 0,
+  debit = 1,
+  credit = 2,
+  points = 3
 }
 
-@Entity()
-export class Transaction {
-    @PrimaryGeneratedColumn('rowid')
-    id: String;
-
-    @ManyToMany(type => Product, product => product.categories)
-    @JoinTable({ name: 'transaction-products' })
-    products: Product[];
-
-    @Column('datetime')
-    timestamp: Date;
-
-    @Column('datetime')
-    lastModified: Date;
-
-    @Column('real')
-    totalPaid: number;
+export enum OrderStatus {
+  pending = 0,
+  inProcess = 1,
+  completed = 2
 }
 //#endregion
 
-var _connection: Connection;
+@Entity('products')
+export class Product {
+  @PrimaryColumn()
+  sku: string;
 
-export function connect(dbConnection: string, opts?: { logging?: boolean, name?: string }): Promise<EntityManager> {
-    return new Promise(async (resolve, reject) => {
-        try {
-            _connection = await createConnection({
-                type: 'sqlite',
-                database: dbConnection,
-                synchronize: true,
-                logging: opts && opts.logging,
-                entities: [
-                    Product, Category
-                ],
-                name: opts && opts.name
-            })
-            let manager = _connection.createEntityManager();
-            resolve(manager)
-        } catch (err) {
-            reject(err)
-        }
-    })
+  @Column('text')
+  name: string;
+
+  @Column({ type: 'real', precision: 2 })
+  tax: number;
+
+  @Column({ nullable: true })
+  description?: string;
+
+  @ManyToMany(type => Category)
+  @JoinTable({ name: 'product-categories' })
+  categories: Category[]
+
+  @Column({ enum: UnitType })
+  unitType: UnitType;
+
+  @Column('int')
+  minStock: number;
 }
 
-export function connectSync(dbConnection: string) {
-    createConnection({
+@Entity('categories')
+export class Category {
+  @PrimaryColumn({ name: 'text' })
+  name: string;
+
+  @Column({ nullable: true })
+  description: string;
+}
+
+@Entity('orders')
+export class Order {
+  @PrimaryGeneratedColumn('increment')
+  id: string;
+
+  @Column('datetime')
+  orderDate: Date;
+
+  @Column('datetime')
+  requiredDate: Date;
+
+  @Column({ enum: OrderStatus })
+  status: OrderStatus;
+
+  @Column('datetime')
+  requestDate: Date;
+
+  @Column('datetime')
+  expectedDeliveryDate: Date;
+
+  @Column('datetime')
+  deliveryDate: Date
+
+  @OneToMany(type => OrderDetails, orderDetails => orderDetails.order, { cascade: ['insert', 'update'] })
+  details: Promise<OrderDetails[]>;
+
+  @OneToOne(type => Supplier, { cascade: true })
+  @JoinTable()
+  supplier: Supplier;
+}
+
+@Entity('order-details')
+export class OrderDetails {
+  @PrimaryGeneratedColumn('rowid')
+  id: string;
+
+  @ManyToOne(type => Order, order => order.details)
+  order: Order;
+
+  @OneToOne(type => Product)
+  @JoinColumn()
+  product: Promise<Product>;
+
+  @Column({ type: 'int', default: 1 })
+  qty: number;
+}
+
+@Entity('transactions')
+export class Transaction {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'real', precision: 3 })
+  paid: number;
+
+  @Column({ enum: PaymentMethod })
+  paymentMethod: PaymentMethod;
+}
+
+@Entity('suppliers')
+export class Supplier {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column()
+  name: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column()
+  email: string;
+}
+
+export function connect(dbConnection: string, opts?: { logging?: boolean, name?: string }): Promise<EntityManager> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      let connection = await createConnection({
         type: 'sqlite',
         database: dbConnection,
         synchronize: true,
-        logging: false,
+        logging: opts && opts.logging,
         entities: [
-            Product, Category, Transaction
-        ]
-    }).then(connection => {
-        _connection = connection
-    }).catch(err => console.error(err))
-    while (_connection !== undefined) {
-        if (_connection)
-            break;
+          Product, Category, Transaction, Supplier, Order, OrderDetails
+        ],
+        name: opts && opts.name
+      })
+      let manager = connection.createEntityManager();
+      resolve(manager)
+    } catch (err) {
+      reject(err)
     }
-    return _connection
-}
-
-export function getConnection(): Connection {
-    return _connection;
-}
-
-export function closeConnection() {
-    _connection.close();
+  })
 }
