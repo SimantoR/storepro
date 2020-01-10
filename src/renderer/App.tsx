@@ -3,91 +3,111 @@ import { Switch, Route, NavLink } from 'react-router-dom';
 import Landing from './components/Landing';
 import Settings from './components/Settings';
 import ReactLoading from 'react-loading';
-import { connect } from './database/database';
+import { connect, Product } from './database/database';
 import { EntityManager, getConnection, Connection, AbstractRepository } from 'typeorm';
 import { init, ROOT_PATH, logErr, LOGDIR_PATH } from './system';
 import { printer as ThermalPrinter, types as PrinterTypes } from 'node-thermal-printer';
 import path from 'path';
 
-type GlobalCtx = {
-  printer: ThermalPrinter,
-  dbManager: EntityManager
+interface State {
+  printer: ThermalPrinter | null,
+  product: Product | null,
+  dbManager: EntityManager | null
 }
-export const AppContext = React.createContext<Partial<GlobalCtx>>({})
 
-const App: React.FC = () => {
-  const [dbManager, setDbManager] = React.useState<EntityManager>();
-  const [printer, setPrinter] = React.useState<ThermalPrinter>();
-  const [loaded, setLoaded] = React.useState(false)
-  init();
-
-  const createConn = (absPath: string) => {
-    connect(absPath).then(manager => {
-      console.log('New connection created');
-      setDbManager(manager);
-    }).catch(err => {
-      console.log(">> Couldn't create a new connection to database");
-    });
-  }
-
-  if (!dbManager) {
-    let conn: Connection;
-    let dbPath = path.resolve(ROOT_PATH, 'inventory.db');
-    try {
-      let conn = getConnection();
-      if (!conn.isConnected) {
-        let err = new Error('Database connection found but not connected')
-        logErr(err);
-        throw err;
-      }
-      else
-        setDbManager(conn.manager);
-    } catch (err) {
-      console.warn(err.message);
-      createConn(dbPath);
+class App extends React.Component<any, State> {
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      printer: null,
+      product: null,
+      dbManager: null
     }
   }
 
-  if (!printer) {
-    setPrinter(new ThermalPrinter({
-      type: PrinterTypes.EPSON,
-      interface: "printer:RECEIPT_PRINTER",
-      driver: require('printer'),
-      options: {
-        timeout: 5000
+  componentDidMount() {
+    let printerTask = new Promise<ThermalPrinter>((resolve, reject) => {
+      try {
+        let _printer = new ThermalPrinter({
+          type: PrinterTypes.EPSON,
+          interface: "printer:RECEIPT_PRINTER",
+          driver: require('printer'),
+          options: {
+            timeout: 5000
+          }
+        });
+        if (_printer)
+          resolve(_printer);
+        else
+          throw new Error('Printer not found');
+      } catch (err) {
+        reject(err);
       }
-    }));
+    })
+
+    let dbTask = new Promise<EntityManager>(async (resolve, reject) => {
+      let dbPath = path.resolve(ROOT_PATH, 'inventory.db');
+      try {
+        resolve(await connect(dbPath));
+      } catch (err) {
+        reject(err)
+      }
+    })
+
+    console.log('Starting tasks...');
+    Promise.all<ThermalPrinter, EntityManager>([printerTask, dbTask])
+      .then(([printer, db]) => {
+        setTimeout(() => {
+          console.log('Updating state')
+          this.setState({
+            printer: printer,
+            dbManager: db
+          });
+        }, 3000);
+      }).catch((err) => {
+        console.log('Error detected');
+        logErr(err);
+        console.error(err);
+      });
   }
 
-  if (!loaded && dbManager && printer)
-    setLoaded(true)
-
-  return (
-    <div>
-      {!loaded
-        ? (
-          <div className="d-flex justify-content-center align-items-center bg-dark vh-100 vw-100">
-            <ReactLoading type={'bubbles'} />
+  render() {
+    try {
+      const { dbManager, printer } = this.state;
+      if (!dbManager || !printer) {
+        return (
+          <div className="d-flex flex-column justify-content-center align-items-center bg-light vh-100 vw-100">
+            <ReactLoading type={'bubbles'} color="#000000" />
+            <h5 className="font-kulim">Loading</h5>
           </div>
-        ) : (
-          <Switch>
-            <Route exact path="/">
-              <Landing dbManager={dbManager as EntityManager} printer={printer as ThermalPrinter} />
-            </Route>
-            <Route path="/settings">
-              <Settings dbManager={dbManager as EntityManager} printer={printer as ThermalPrinter} />
-            </Route>
-            {/* No Path */}
-            <Route>
-              <p>
-                Sorry go back to {' '}<NavLink to='/'>home page</NavLink>
-              </p>
-            </Route>
-          </Switch>
-        )
+        );
       }
-    </div>
-  )
+
+      return (
+        <Switch>
+          <Route exact path="/">
+            <Landing dbManager={dbManager} printer={printer} />
+          </Route>
+          <Route path="/settings">
+            <Settings dbManager={dbManager} printer={printer} />
+          </Route>
+          {/* No Path */}
+          <Route>
+            <p>
+              Sorry go back to {' '}<NavLink to='/'>home page</NavLink>
+            </p>
+          </Route>
+        </Switch>
+      )
+    } catch (err) {
+      console.log(err);
+      return (
+        <div>
+          <p>Component had an error</p>
+        </div>
+      )
+    }
+  }
 }
 
 export default App
