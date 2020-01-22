@@ -30,10 +30,15 @@ export enum PaymentMethod {
 
 export enum OrderStatus {
   pending = 0,
-  inProcess = 1,
-  completed = 2
+  delayed = 1,
+  delivered = 2
 }
 //#endregion
+
+export function getUnitType(type: UnitType) {
+  const values = ['kg', 'lg', 'gm', 'ltr']
+  return values[type];
+}
 
 @Entity('products')
 export class Product {
@@ -49,15 +54,21 @@ export class Product {
   @Column({ nullable: true })
   description?: string;
 
-  @ManyToMany(type => Category)
+  @Column({ type: 'real', default: 0 })
+  costPrice: number;
+
+  @ManyToMany(type => Category, { nullable: true })
   @JoinTable({ name: 'product-categories' })
-  categories: Category[]
+  categories?: Promise<Category[]>;
 
   @Column({ enum: UnitType })
   unitType: UnitType;
 
   @Column('int')
   minStock: number;
+
+  @Column({ type: 'int', default: 0 })
+  qty: number;
 }
 
 @Entity('categories')
@@ -84,31 +95,31 @@ export class Order {
   status: OrderStatus;
 
   @Column('datetime')
-  requestDate: Date;
-
-  @Column('datetime')
   expectedDeliveryDate: Date;
 
-  @Column('datetime')
-  deliveryDate: Date
+  @Column({ nullable: true })
+  refNo?: string;
 
-  @OneToMany(type => OrderDetails, orderDetails => orderDetails.order, { cascade: ['insert', 'update'] })
-  details: Promise<OrderDetails[]>;
+  @Column({ type: 'datetime', nullable: true })
+  deliveryDate?: Date
 
-  @OneToOne(type => Supplier, { cascade: true })
+  @OneToMany(type => OrderItem, orderDetails => orderDetails.order, { cascade: ['insert', 'update'] })
+  items: Promise<OrderItem[]>;
+
+  @OneToOne(type => Supplier, { cascade: ['insert', 'update'] })
   @JoinTable()
   supplier: Supplier;
 }
 
-@Entity('order-details')
-export class OrderDetails {
+@Entity('order_items')
+export class OrderItem {
   @PrimaryGeneratedColumn('rowid')
-  id: string;
+  id?: string;
 
-  @ManyToOne(type => Order, order => order.details)
+  @ManyToOne(type => Order, order => order.items)
   order: Order;
 
-  @OneToOne(type => Product)
+  @OneToOne(type => Product, { cascade: ['insert', 'update'] })
   @JoinColumn()
   product: Promise<Product>;
 
@@ -131,7 +142,7 @@ export class Transaction {
 @Entity('suppliers')
 export class Supplier {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column()
   name: string;
@@ -152,7 +163,7 @@ export function connect(dbConnection: string, opts?: { logging?: boolean, name?:
         synchronize: true,
         logging: opts && opts.logging,
         entities: [
-          Product, Category, Transaction, Supplier, Order, OrderDetails
+          Product, Category, Transaction, Supplier, Order, OrderItem
         ],
         name: opts && opts.name
       })
