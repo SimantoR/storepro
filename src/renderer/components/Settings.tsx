@@ -4,11 +4,13 @@ import SwitchToggler from 'react-switch';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock, faChevronCircleLeft, faUnlock } from '@fortawesome/free-solid-svg-icons';
 import { printer as ThermalPrinter, types as PrinterTypes } from 'node-thermal-printer';
+import Scrollbars from 'react-custom-scrollbars';
+import InventoryPage from './Inventory';
+import { EntityManager } from 'typeorm';
+import { ROOT_PATH, logErr } from '../system';
 import path from 'path'
 import * as fs from 'fs'
-import Scrollbars from 'react-custom-scrollbars';
-import Inventory from './Inventory';
-import { getConnection, EntityManager } from 'typeorm';
+import AddToInventory from './AddToInventory';
 
 //#region Extra Interfaces
 interface Lock {
@@ -79,18 +81,23 @@ class Settings extends Component<Props, State> {
   componentDidMount() {
     this.loadSettings().then(conf => {
       this.setState({ conf: conf })
+    }).catch((err: Error) => {
+      logErr(err);
+      console.log('Could not load settings');
     })
+  }
+
+  componentDidCatch() {
+    console.log('Component Fucked up')
   }
 
   loadSettings = () => {
     return new Promise<AppConfig>((resolve, reject) => {
-      let filePath = path.resolve('./', 'config.json')
+      let filePath = path.resolve(ROOT_PATH, 'conf.json');
       if (fs.existsSync(filePath)) {
-        let content = fs.readFileSync(path.resolve('./', 'config.json'), { encoding: 'utf8' })
-        fs.readFile(path.resolve('./', 'config.json'), err => {
-          if (err) reject(err)
-        })
-        resolve(JSON.parse(content))
+        fs.readFile(filePath, { encoding: 'utf8' }, (err, data) => {
+          resolve(JSON.parse(data));
+        });
       } else {
         reject(new Error("File doesn't exist"))
       }
@@ -98,11 +105,12 @@ class Settings extends Component<Props, State> {
   }
 
   saveSettings = ({ preventDefault }: React.MouseEvent<HTMLButtonElement>) => {
-    preventDefault()
+    preventDefault();
+
     return new Promise<void>((resolve, reject) => {
-      fs.writeFile(path.resolve('./', 'config.json'), JSON.stringify(this.state.conf), err => {
-        if (err) reject(err)
-        else resolve()
+      fs.writeFile(path.resolve(ROOT_PATH, 'conf.json'), JSON.stringify(this.state.conf), err => {
+        if (err) reject(err);
+        else resolve();
       })
     })
   }
@@ -172,16 +180,17 @@ class Settings extends Component<Props, State> {
             </Link>
             <div className="btn-group-vertical btn-group-square">
               <NavLink exact to="/settings" className="btn btn-lg btn-outline-light border-0">General</NavLink>
-              <button className="btn btn-lg btn-outline-light border-0">Outlook</button>
               <NavLink to="/settings/inventory" className="btn btn-lg btn-outline-light border-0">Inventory</NavLink>
-              <button className="btn btn-lg btn-outline-light border-0">Manager Area</button>
             </div>
           </div>
           {/* Content */}
           <div className="flex-grow-1" style={{ width: '80vw' }}>
             <Switch>
-              <Route path="/settings/inventory">
-                <Inventory dbManager={this.props.dbManager} />
+              <Route exact path="/settings/inventory/add">
+                <AddToInventory database={this.props.dbManager} />
+              </Route>
+              <Route exact path="/settings/inventory">
+                <InventoryPage database={this.props.dbManager} />
               </Route>
               <Route exact path="/settings">
                 <Scrollbars className="w-100 h-100">
