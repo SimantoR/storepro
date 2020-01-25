@@ -104,7 +104,7 @@ export class Order {
   deliveryDate?: Date
 
   @OneToMany(type => OrderItem, orderDetails => orderDetails.order, { cascade: ['insert', 'update'] })
-  items: Promise<OrderItem[]>;
+  items: OrderItem[];
 
   @OneToOne(type => Supplier, { cascade: ['insert', 'update'] })
   @JoinTable()
@@ -119,9 +119,9 @@ export class OrderItem {
   @ManyToOne(type => Order, order => order.items)
   order: Order;
 
-  @OneToOne(type => Product, { cascade: ['insert', 'update'] })
+  @ManyToMany(type => Product, { cascade: true })
   @JoinColumn()
-  product: Promise<Product>;
+  product: Product;
 
   @Column({ type: 'int', default: 1 })
   qty: number;
@@ -142,7 +142,7 @@ export class Transaction {
 @Entity('suppliers')
 export class Supplier {
   @PrimaryGeneratedColumn('uuid')
-  id?: string;
+  id: string;
 
   @Column()
   name: string;
@@ -163,10 +163,10 @@ export function connect(dbConnection: string, opts?: { logging?: boolean, name?:
         synchronize: true,
         logging: opts && opts.logging,
         entities: [
-          Product, Category, Transaction, Supplier, Order, OrderItem
+          Product, Category, Transaction, Order, Supplier, OrderItem
         ],
         name: opts && opts.name
-      })
+      });
       let manager = connection.createEntityManager();
       resolve(manager)
     } catch (err) {
