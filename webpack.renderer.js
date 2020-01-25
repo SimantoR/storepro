@@ -9,14 +9,23 @@ module.exports = function (config) {
           use: ['react-hot-loader/webpack']
         },
         {
-          test: /\.css$/i,
-          include: /node_modules/,
-          use: ['style-loader', 'css-loader'],
+          test: /\.css$/,
+          fallback: ['style-loader'],
+          use: ['css-loader']
         },
         {
           test: /\.tsx?$/,
           exclude: /node_modules/,
-          use: ['ts-loader']
+          use: 'ts-loader'
+        },
+        {
+          test: /\.(html)$/,
+          use: {
+            loader: 'html-loader',
+            options: {
+              attrs: [':data-src']
+            }
+          }
         },
         {
           test: /\.json$/,
