@@ -16,8 +16,15 @@ p, h1, h2, h3, h4, h5 {
 }
 
 .btn {
-    transition: all 0.2s !important;
     box-shadow: none !important;
+}
+
+.btn.animated {
+    transition: transform 0.2s !important;
+}
+
+.btn.animated:active {
+    transform: scale(0.9);
 }
 
 .btn-pro {
@@ -81,10 +88,6 @@ p, h1, h2, h3, h4, h5 {
 .btn.btn-green {
     background: linear-gradient(180deg, #18db5c, #69f098);
     border-radius: 10px !important;
-}
-
-.btn:active {
-    transform: scale(0.9);
 }
 
 .btn.btn-red {

@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'promise-fs';
 import { homedir } from 'os';
-import sharp from 'sharp';
 import 'datejs'
 
 export const ROOT_PATH = path.resolve(homedir(), '.storepro');
@@ -10,7 +9,7 @@ export const CACHE_DIR = path.resolve(ROOT_PATH, '.cache');
 export const CONF_PATH = path.resolve(ROOT_PATH, 'menu.conf');
 
 export function init() {
-    const rootTask = new Promise((resolve: () => void, reject: (err: Error) => void) => {
+    const rootTask = new Promise<void>((resolve: () => void, reject: (err: Error) => void) => {
         if (!fs.existsSync(ROOT_PATH)) {
             fs.mkdir(ROOT_PATH).catch(err => {
                 if (err)
@@ -40,13 +39,7 @@ export function init() {
             });
         }
     });
-    const result = Promise.all([rootTask, logTask, cacheTask]);
-
-    result.catch(([err1, err2, err3]) => {
-        if (err1 || err2 || err3) {
-            logErr(err1 || err2 || err3);
-        }
-    })
+    const result = Promise.all<void>([rootTask, logTask, cacheTask]);
 }
 
 export function logErr(err: Error): Promise<void> {
@@ -87,26 +80,6 @@ export function loadMenu(): Promise<MenuButtonProps[] | undefined> {
             fs.readFile(CONF_PATH, { encoding: 'utf8' })
                 .then(data => resolve(JSON.parse(data) as MenuButtonProps[]))
                 .catch(err => reject(err));
-        }
-    })
-}
-
-export function loadImage(imgPath: string): Promise<string> {
-    return new Promise<string>(async (resolve, reject) => {
-        if (fs.existsSync(imgPath)) {
-            const image = sharp(imgPath);
-            let base64 = '';
-            
-            const error = function (err: Error | null | undefined) {
-                if (err)
-                    reject(err)
-            }
-            if (image.webp().write(base64, 'base64', error)) {
-                resolve(`data:image/webp; ${base64}`);
-            }
-            else {
-                reject(new Error());
-            }
         }
     })
 }
