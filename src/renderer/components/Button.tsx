@@ -26,12 +26,14 @@ class Button extends Component<Props, State> {
   onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     const { onClick } = this.props;
     const { audio } = this.state;
+    e.currentTarget.blur();
     if (audio) audio.play();
     if (onClick) onClick(e);
   };
 
   render() {
     const {
+      style,
       children,
       audioSrc,
       animated,
@@ -40,14 +42,12 @@ class Button extends Component<Props, State> {
     } = this.props;
 
     let _className = className ? `${className} ` : '';
-    if (animated) 
-      _className += 'animated';
+    let _style: React.CSSProperties = { zIndex: 1, ...style };
+    if (animated) { _className += 'animated'; }
 
     return (
-      <button {...buttonProps} className={_className} onClick={this.onClick}>
-        <span style={{ zIndex: 0 }}>
+      <button {...buttonProps} style={_style} className={_className} onClick={this.onClick}>
           {children}
-        </span>
       </button>
     );
   }
