@@ -19,9 +19,9 @@ module.exports = function (config) {
           use: 'ts-loader'
         },
         {
-          test: /\.(html)$/,
+          test: /\.html$/,
           use: {
-            loader: 'html-loader',
+            loader: 'file-loader',
             options: {
               attrs: [':data-src']
             }
