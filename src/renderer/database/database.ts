@@ -154,6 +154,27 @@ export class Supplier {
   email: string;
 }
 
+@Entity('discount')
+export class Discount {
+  @PrimaryGeneratedColumn('uuid')
+  uuid: string;
+
+  @Column('datetime')
+  start: Date;
+
+  @Column('datetime')
+  end: Date;
+
+  @Column('real', { default: 0 })
+  dollarOff: number;
+
+  @Column('real', { default: 0 })
+  forQty: number;
+
+  @ManyToMany(type => Product, { cascade: false })
+  product: Product;
+}
+
 export function connect(dbConnection: string, opts?: { logging?: boolean, name?: string }): Promise<EntityManager> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -163,7 +184,7 @@ export function connect(dbConnection: string, opts?: { logging?: boolean, name?:
         synchronize: true,
         logging: opts && opts.logging,
         entities: [
-          Product, Category, Transaction, Order, Supplier, OrderItem
+          Product, Category, Transaction, Order, Supplier, OrderItem, Discount
         ],
         name: opts && opts.name
       });
