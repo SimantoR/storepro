@@ -21,7 +21,7 @@ const rootElement = document.getElementById('app');
 // titlebar.updateTitle('StorePro');
 
 ReactDOM.render(
-    <HashRouter>
+    <HashRouter basename="/">
         <App />
     </HashRouter>,
     rootElement

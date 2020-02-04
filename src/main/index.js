@@ -1,30 +1,33 @@
 'use strict'
-import env from 'common/env'
+import env from 'common/env';
 import {
   app,
   BrowserWindow
-} from 'electron'
-import * as path from 'path'
+} from 'electron';
+import * as path from 'path';
 import {
   format as formatUrl
-} from 'url'
+} from 'url';
 // import initDevTools from './dev/initDevTools'
 
 // global reference to mainWindow (necessary to prevent window from being garbage collected)
 let mainWindow
+let loadWindow
 
 function createMainWindow() {
   const window = new BrowserWindow({
     webPreferences: {
       nodeIntegration: true,
-      devTools: true
+      devTools: true,
+      webSecurity: false
     },
-    fullscreen: true,
+    title: 'Store Pro',
+    fullscreenable: true,
     minWidth: 900,
     minHeight: 700
-  })
+  });
 
-  window.setFullScreen(true)
+  // window.setFullScreen(true)
 
   let url
 
@@ -49,6 +52,30 @@ function createMainWindow() {
   })
 
   window.loadURL(url)
+  window.hide();
+
+  return window
+}
+
+function createLoadWindow() {
+  const window = new BrowserWindow({
+    width: 400,
+    height: 400,
+    frame: false,
+    transparent: true,
+    resizable: false
+  })
+
+  let url = formatUrl({
+    pathname: path.join(__dirname, 'loading.html'),
+    protocol: 'file',
+    slashes: true
+  })
+
+  console.log(`File URL: ${url}`)
+  window.loadFile(__static + '/loading.html');
+  window.on('closed', () => loadWindow = null)
+  window.show();
 
   return window
 }
@@ -59,18 +86,26 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+  app.quit()
 })
 
-app.on('activate', () => {
-  // on macOS it is common to re-create a window even after all windows have been closed
-  if (mainWindow === null) {
-    mainWindow = createMainWindow()
-  }
-})
+// app.on('activate', () => {
+//   // on macOS it is common to re-create a window even after all windows have been closed
+//   if (mainWindow === null) {
+//     mainWindow = createMainWindow()
+//   }
+// })
 
 // create main BrowserWindow when electron is ready
 app.on('ready', () => {
-  mainWindow = createMainWindow()
+  loadWindow = createLoadWindow();
+  mainWindow = createMainWindow();
+  mainWindow.on('show', () => {
+    if (loadWindow) {
+      loadWindow.close();
+      mainWindow.setFullScreen(true);
+    }
+  })
 })
 
 if (module.hot) {
