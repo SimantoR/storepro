@@ -5,13 +5,13 @@ import { printer as ThermalPrinter } from 'node-thermal-printer';
 import requireStatic from '../requireStatic';
 import Scrollbars from 'react-custom-scrollbars';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-// import NumPad from 'react-numpad';
 import { logErr, MenuButtonProps, loadMenu } from '../system';
 import { Product, Discount } from '../database/database';
 import { EntityManager, LessThan, MoreThan } from 'typeorm';
 import { getPrinter } from 'printer';
 // @ts-ignore
 import receipt from 'receipt';
+import Button from './Button';
 import 'linqify';
 import './bootstrap.min.css';
 import './bootstrap_x.css';
@@ -31,8 +31,8 @@ import {
     faBatteryThreeQuarters,
     faTimes
 } from '@fortawesome/free-solid-svg-icons';
-import Button from './Button';
-import KeyboardInput from './KeyboardInput';
+import Numpad from './Numpad';
+import PaymentPanel from './PaymentPanel';
 
 receipt.config = {
     ...receipt.config,
@@ -58,7 +58,7 @@ interface State {
     menu?: MenuButtonProps[];
     hoverElement?: JSX.Element;
     batteryStatus?: JSX.Element;
-    keyboardInput?: number;
+    keyboardInput: string;
 }
 
 interface Item {
@@ -70,11 +70,6 @@ interface Item {
 
 const greenDot = requireStatic('green_dot.webp');
 const redDot = requireStatic('red_dot.webp');
-
-// function toImage(base64: string, type: 'jpg' | 'png' | 'webp') {
-//   return `data:image/${type};base64, ${base64}`;
-// }
-
 class Landing extends React.Component<Props, State> {
     mainInputRef: React.RefObject<HTMLInputElement>;
 
@@ -87,7 +82,7 @@ class Landing extends React.Component<Props, State> {
             items: [],
             connStatus: true,
             skuInput: '',
-            keyboardInput: undefined
+            keyboardInput: ''
         };
     }
 
@@ -211,29 +206,8 @@ class Landing extends React.Component<Props, State> {
     };
 
     showPayment = () => {
-        const { keyboardInput } = this.state;
         const closePaymentWin = () => this.setState({ hoverElement: undefined });
-
-        this.setState({
-            hoverElement: (
-                <div className="card">
-                    <div className="card-header bg-transparent d-flex">
-                        <div className="mr-auto">Payment</div>
-                        <div>
-                            <Button className="btn btn-secondary btn-sm btn-circle" onClick={closePaymentWin}>
-                                <FontAwesomeIcon icon={faTimes} />
-                            </Button>
-                        </div>
-                    </div>
-                    <div className="card-body">
-                        <div className="card-text" style={{ zIndex: 10 }}>
-                            <input type="text" className="form-control" />
-                            <KeyboardInput />
-                        </div>
-                    </div>
-                </div>
-            )
-        });
+        this.setState({ hoverElement: <PaymentPanel onClose={closePaymentWin} onSubmit={(value) => { }} /> })
     };
 
     checkConnection = () => {
@@ -464,7 +438,7 @@ class Landing extends React.Component<Props, State> {
                         style={{
                             position: 'absolute',
                             left: 0,
-                            zIndex: 1,
+                            zIndex: 2,
                             background: 'rgba(0, 0, 0, 0.4)'
                         }}
                     >
@@ -482,9 +456,9 @@ class Landing extends React.Component<Props, State> {
                     )}
                     <Button className="btn btn-sm btn-icon">
                         <FontAwesomeIcon icon={faStore} /> StorePro
-          </Button>
+                    </Button>
                     <Button className="btn btn-sm btn-icon">
-                        <small className="text-monospace">Version: 0.0.2</small>
+                        <small className="text-monospace">Version: 0.0.3</small>
                     </Button>
                     <button className="btn btn-sm btn-icon h-100">
                         Connection:{' '}

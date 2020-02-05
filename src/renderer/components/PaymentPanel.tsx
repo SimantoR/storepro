@@ -61,7 +61,7 @@ const PaymentPanel: React.FC<IProps> = (props: IProps) => {
           }
         }}
       />
-      <Button className="btn btn-lg w-100 btn-success shadow-inset">
+      <Button className="btn btn-lg w-100 btn-success shadow-tight my-2">
         Pay
       </Button>
     </div>

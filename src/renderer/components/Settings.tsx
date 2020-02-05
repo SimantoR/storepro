@@ -11,6 +11,7 @@ import { ROOT_PATH, logErr } from '../system';
 import path from 'path'
 import * as fs from 'fs'
 import AddToInventory from './AddToInventory';
+import Employee from './Employee';
 
 //#region Extra Interfaces
 interface Lock {
@@ -31,6 +32,23 @@ interface AppConfig {
     enableGiftCard: boolean,
     useLoyaltyCard: boolean,
     enableExternalPayments: boolean
+  }
+}
+
+interface _AppConfig {
+  app: {
+    sleepAfter?: number, // seconds
+    keyboard: boolean,
+    sound: boolean
+  },
+  manager: {
+    allowRefunds: boolean,
+    allowVoids: boolean,
+    allowDrawerAccess: boolean
+  },
+  sync: {
+    syncInterval: number, // minutes
+    encrypt: boolean, // takes paid subscription
   }
 }
 //#endregion
@@ -56,7 +74,24 @@ interface Props {
 
 interface State {
   conf: AppConfig,
-  authenticated: boolean
+  authenticated: boolean,
+  conf2: _AppConfig
+}
+
+const defaultConf: _AppConfig = {
+  app: {
+    keyboard: true,
+    sound: true
+  },
+  manager: {
+    allowRefunds: true,
+    allowVoids: true,
+    allowDrawerAccess: false
+  },
+  sync: {
+    encrypt: false,
+    syncInterval: 60
+  }
 }
 
 class Settings extends Component<Props, State> {
@@ -74,7 +109,8 @@ class Settings extends Component<Props, State> {
           enableExternalPayments: false
         }
       },
-      authenticated: false
+      authenticated: false,
+      conf2: defaultConf
     }
   }
 
@@ -83,15 +119,15 @@ class Settings extends Component<Props, State> {
       this.setState({ conf: conf })
     }).catch((err: Error) => {
       logErr(err);
-      console.log('Could not load settings');
+      console.warn(err);
     })
   }
 
   componentDidCatch() {
-    console.log('Component Fucked up')
+    console.log('Component Fucked up');
   }
 
-  loadSettings = () => {
+  loadSettings = (): Promise<AppConfig> => {
     return new Promise<AppConfig>((resolve, reject) => {
       let filePath = path.resolve(ROOT_PATH, 'conf.json');
       if (fs.existsSync(filePath)) {
@@ -106,38 +142,11 @@ class Settings extends Component<Props, State> {
 
   saveSettings = ({ preventDefault }: React.MouseEvent<HTMLButtonElement>) => {
     preventDefault();
-
     return new Promise<void>((resolve, reject) => {
       fs.writeFile(path.resolve(ROOT_PATH, 'conf.json'), JSON.stringify(this.state.conf), err => {
         if (err) reject(err);
         else resolve();
       })
-    })
-  }
-
-  fetchSettings = () => {
-    const URL = "https://storepro.com/company/storeid/termid/settings"
-
-    return new Promise<Lock>(async (resolve, reject) => {
-      let response = await fetch(
-        URL,
-        { method: 'GET', mode: 'no-cors' }
-      )
-      if (response.status !== 200)
-        reject(new Error(
-          `Couldn't fetch the settings from server: ${JSON.stringify({
-            status: response.status,
-            method: 'GET',
-            url: URL
-          })}`
-        ))
-
-      try {
-        let locks = await response.json()
-        resolve(locks)
-      } catch (err) {
-        reject(err)
-      }
     })
   }
 
@@ -165,6 +174,7 @@ class Settings extends Component<Props, State> {
         printOnSale,
         payment
       },
+      conf2,
       authenticated
     } = this.state
 
@@ -172,25 +182,37 @@ class Settings extends Component<Props, State> {
       <div className="vw-100 vh-100 bg-light">
         <div className="d-flex h-100">
           {/* Sidebar */}
-          <div className="bg-dark d-flex flex-column p-2" style={{ width: '20vw', height: '100%' }}>
+          <div className="bg-dark d-flex flex-column p-2" style={{ width: '15vw', height: '100%' }}>
             <Link to="/" className="btn btn-red btn-circle shadow-tight mb-2">
               <div className="h-100 d-flex justify-content-center align-items-center">
                 <FontAwesomeIcon icon={faChevronCircleLeft} />
               </div>
             </Link>
-            <div className="btn-group-vertical btn-group-square">
-              <NavLink exact to="/settings" className="btn btn-lg btn-outline-light border-0">General</NavLink>
-              <NavLink to="/settings/inventory" className="btn btn-lg btn-outline-light border-0">Inventory</NavLink>
+            <div className="d-flex flex-column w-100">
+              <div className="my-1">
+                <NavLink exact to="/settings" className="w-100 btn btn-lg rounded btn-outline-light border-0">
+                  General
+                </NavLink>
+              </div>
+              <div className="my-1">
+                <NavLink to="/settings/inventory" className="w-100 btn btn-lg rounded btn-outline-light border-0">Inventory</NavLink>
+              </div>
+              <div className="my-1">
+                <NavLink to="/settings/employees" className="w-100 btn btn-lg rounded btn-outline-light border-0">Employees</NavLink>
+              </div>
             </div>
           </div>
           {/* Content */}
-          <div className="flex-grow-1" style={{ width: '80vw' }}>
+          <div className="flex-grow-1" style={{ width: '85vw' }}>
             <Switch>
               <Route exact path="/settings/inventory/add">
                 <AddToInventory database={this.props.dbManager} />
               </Route>
               <Route exact path="/settings/inventory">
                 <InventoryPage database={this.props.dbManager} />
+              </Route>
+              <Route exact path="/settings/employees">
+                <Employee database={this.props.dbManager} />
               </Route>
               <Route exact path="/settings">
                 <Scrollbars className="w-100 h-100">
@@ -202,9 +224,15 @@ class Settings extends Component<Props, State> {
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={misc.keyboard}
-                              onChange={checked => this.setState(({ conf }) => ({
-                                conf: { ...conf, misc: { ...misc, keyboard: checked } }
+                              checked={conf2.app.keyboard}
+                              onChange={checked => this.setState(({ conf2 }) => ({
+                                conf2: {
+                                  ...conf2,
+                                  app: {
+                                    ...conf2.app,
+                                    keyboard: checked
+                                  }
+                                }
                               }))}
                             />
                             <div className="pl-2">Keyboard Mode</div>
@@ -212,9 +240,15 @@ class Settings extends Component<Props, State> {
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={misc.sound}
+                              checked={conf2.app.sound}
                               onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, misc: { ...misc, sound: checked } }
+                                conf2: {
+                                  ...conf2,
+                                  app: {
+                                    ...conf2.app,
+                                    sound: checked
+                                  }
+                                }
                               }))}
                             />
                             <div className="pl-2">Sound</div>
