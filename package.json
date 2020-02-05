@@ -1,6 +1,6 @@
 {
   "name": "store_pro",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "author": {
     "name": "Simanto Rahman",
     "email": "simantor@mun.ca",
@@ -30,6 +30,7 @@
     "@types/sharp": "^0.24.0",
     "@types/sqlite3": "^3.1.6",
     "bootstrap": "^4.4.1",
+    "csv-stringify": "^5.3.6",
     "custom-electron-titlebar": "^3.2.0",
     "datejs": "^1.0.0-rc3",
     "dotenv": "^8.0.0",
@@ -39,7 +40,6 @@
     "immutable": "^4.0.0-rc.12",
     "jquery": "^3.4.1",
     "json-loader": "^0.5.7",
-    "kioskboard": "^1.1.0",
     "linqify": "^1.2.1",
     "node-thermal-printer": "git+https://github.com/SimantoR/node-thermal-printer.git",
     "osx-temperature-sensor": "^1.0.4",
@@ -55,7 +55,7 @@
     "react-router-dom": "^4.3.1",
     "react-select": "^3.0.8",
     "react-switch": "^5.0.1",
-    "receipt": "^1.4.0",
+    "receipt": "file:../../receipt",
     "source-map-support": "^0.5.12",
     "sqlite3": "^4.1.1",
     "systeminformation": "^4.16.0",
