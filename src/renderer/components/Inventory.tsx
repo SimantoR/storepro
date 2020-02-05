@@ -6,6 +6,7 @@ import { Product } from '../database/database';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { EntityManager, MoreThan } from 'typeorm';
 import { logErr } from '../system';
+import toCsv from 'csv-stringify';
 import { remote } from 'electron';
 import * as fs from 'fs';
 import 'datejs';
@@ -84,9 +85,22 @@ class InventoryPage extends Component<Props, State> {
   };
 
   exportToCsv = async () => {
-    const { items } = this.state;
+    const { items, selected } = this.state;
 
+    // if there are no items, do nothing
     if (!items) return;
+
+    let selectedItems: Product[] = []
+
+    selected.forEach((checked, i) => {
+      if (checked) {
+        selectedItems.push(items[i]);
+      }
+    });
+
+    // if there are no selected items, do nothing
+    if (selectedItems.length === 0)
+      return;
 
     let fStream: fs.WriteStream;
 
@@ -99,25 +113,33 @@ class InventoryPage extends Component<Props, State> {
           buttonLabel: 'Save',
           title: 'Save CSV',
           nameFieldLabel: 'export',
-          filters: [{ extensions: ['csv', 'xlsx'], name: 'Excel' }]
         }
       );
-      console.log(filePath);
+      // if the save dialog is closed or no filepath is returned, do nothing
       if (canceled || !filePath) return;
+
+      // create a write stream to filepath
       fStream = fs.createWriteStream(filePath, {
         encoding: 'utf8',
-        flags: 'a+'
+        flags: 'w+'
       });
     }
 
-    // convert data to csv //
-    fStream.write('SKU,Name,Tax,Qty', 'utf8');
-    items.forEach(item => {
-      const txtLine = `\n${item.sku},${item.name},${item.tax},${item.qty}`;
-      fStream.write(txtLine, 'utf8');
+    // convert data to csv
+    const stringifier = toCsv(selectedItems, {
+      header: true,
+      columns: [
+        { key: 'sku', header: 'SKU' },
+        { key: 'name', header: 'Name' },
+        { key: 'tax', header: 'Tax' },
+        { key: 'costPrice', header: 'Cost Price' },
+        { key: 'minStock', header: 'Min Stock' },
+        { key: 'qty', header: 'Quantity' }
+      ]
     });
 
-    fStream.close();
+    // write csv data to filestream
+    stringifier.pipe(fStream, { end: true });
   };
 
   render() {
@@ -167,9 +189,9 @@ class InventoryPage extends Component<Props, State> {
             <button className="btn btn-light btn-circle btn-lg shadow-tight">
               <FontAwesomeIcon icon={faMailBulk} />
             </button>
-            <button className="btn btn-light btn-circle btn-lg shadow-tight">
+            <Button className="btn btn-light btn-circle btn-lg shadow-tight">
               <FontAwesomeIcon icon={faRedo} onClick={this.loadInventory} />
-            </button>
+            </Button>
           </div>
           <div className="btn-toolbar w-100 align-items-center justify-content-center">
             <Button className="btn btn-light btn-circle btn-lg shadow-tight">
@@ -248,8 +270,8 @@ class InventoryPage extends Component<Props, State> {
                       </tr>
                     ))
                   ) : (
-                    <p>No Data Found</p>
-                  )}
+                      <p>No Data Found</p>
+                    )}
                 </tbody>
               </table>
             </Scrollbars>
