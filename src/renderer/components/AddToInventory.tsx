@@ -314,10 +314,10 @@ class AddToInventory extends Component<Props, State> {
                     value={
                       newItem.product.sku !== ''
                         ? {
-                            label: newItem.product.sku,
-                            value: newItem.product.sku
-                          }
-                        : undefined
+                          label: newItem.product.sku,
+                          value: newItem.product.sku
+                        }
+                        : null
                     }
                     loadOptions={skuLoadOpts}
                     backspaceRemovesValue
@@ -371,7 +371,7 @@ class AddToInventory extends Component<Props, State> {
                     value={
                       newItem.product.name !== ''
                         ? { label: newItem.product.name, value: newItem }
-                        : undefined
+                        : null
                     }
                     loadOptions={nameLoadOpts}
                     backspaceRemovesValue
@@ -447,6 +447,7 @@ class AddToInventory extends Component<Props, State> {
                 <td>
                   <input
                     type="text"
+                    readOnly
                     value={newItem.product.qty}
                     className="form-control"
                   />
