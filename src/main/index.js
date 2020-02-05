@@ -60,7 +60,7 @@ function createMainWindow() {
 function createLoadWindow() {
   const window = new BrowserWindow({
     width: 400,
-    height: 400,
+    height: 250,
     frame: false,
     transparent: true,
     resizable: false

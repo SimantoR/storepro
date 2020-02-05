@@ -1,6 +1,9 @@
 .DS_Store
-dist/
-node_modules/
 thumbs.db
 .idea/
 .vscode/
+
+# Node, React, NPM
+dist/
+node_modules/
+package-lock.json
