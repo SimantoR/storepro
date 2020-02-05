@@ -55,7 +55,7 @@
     "react-router-dom": "^4.3.1",
     "react-select": "^3.0.8",
     "react-switch": "^5.0.1",
-    "receipt": "file:../../receipt",
+    "receipt": "^1.4.0",
     "source-map-support": "^0.5.12",
     "sqlite3": "^4.1.1",
     "systeminformation": "^4.16.0",
