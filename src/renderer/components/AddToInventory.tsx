@@ -1,14 +1,5 @@
 import React, { Component } from 'react';
 import { EntityManager, Like } from 'typeorm';
-import {
-  Product,
-  getUnitType,
-  UnitType,
-  Order,
-  OrderItem,
-  OrderStatus,
-  Supplier
-} from '../database/database';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 import DatePicker from 'react-datepicker';
@@ -18,6 +9,15 @@ import { logErr } from '../system';
 import Scrollbars from 'react-custom-scrollbars';
 import 'react-datepicker/dist/react-datepicker.min.css';
 import 'datejs';
+import {
+  Product,
+  getUnitType,
+  UnitType,
+  Order,
+  OrderItem,
+  OrderStatus,
+  Supplier
+} from '../database/database';
 
 interface Props {
   database: EntityManager;
@@ -97,6 +97,21 @@ class AddToInventory extends Component<Props, State> {
       newItem: { product: emptyItem, qty: 0 }
     });
   };
+
+  submitInventory = () => {
+    const { database } = this.props;
+    const { orderItems } = this.state;
+
+    const products = orderItems.map(({ product, qty }) => {
+      return database.create(Product, { ...product, qty: (product.qty || 0) + qty });
+    });
+
+    database.save<Product>(products, { transaction: false })
+      .catch((err: Error) => console.warn(err.message))
+      .then(() => {
+        this.setState({ newItem: { product: emptyItem, qty: 0 }, orderItems: [] });
+      });
+  }
 
   submitOrder = async () => {
     const { database } = this.props;
@@ -184,23 +199,6 @@ class AddToInventory extends Component<Props, State> {
         });
     };
 
-    const dummyOpts = (input: string, cb: any) => {
-      cb([
-        {
-          label: 'Option 1',
-          value: 'Option 1'
-        },
-        {
-          label: 'Option 2',
-          value: 'Option 2'
-        },
-        {
-          label: 'Option 3',
-          value: 'Option 3'
-        }
-      ]);
-    };
-
     return (
       <div className="w-100 h-100 d-flex flex-column">
         <div className="w-100 p-2">
@@ -211,7 +209,7 @@ class AddToInventory extends Component<Props, State> {
                 cacheOptions={false}
                 classNamePrefix="form-control"
                 backspaceRemovesValue
-                loadOptions={dummyOpts}
+                loadOptions={supplierLoadOpts}
               />
             </div>
             <div className="col-1" />
@@ -272,7 +270,7 @@ class AddToInventory extends Component<Props, State> {
             <div className="col-2 d-flex justify-content-around align-items-center">
               <div className="px-2 h-100">
                 <button
-                  onClick={this.submitOrder}
+                  onClick={this.submitInventory}
                   className="btn btn-info btn-lg h-100 shadow-tight"
                 >
                   Submit
@@ -468,11 +466,14 @@ class AddToInventory extends Component<Props, State> {
                   <input
                     type="number"
                     className="form-control"
-                    min={1}
                     value={newItem.qty}
-                    onChange={({ currentTarget: { valueAsNumber } }) => {
-                      newItem.qty = valueAsNumber ?? 0;
-                      this.setState({ newItem: newItem });
+                    onChange={({ currentTarget: { valueAsNumber, value } }) => {
+                      if (value === '') {
+                        this.setState({ newItem: { ...newItem, qty: 0 } });
+                      } else {
+                        newItem.qty = valueAsNumber ?? 0;
+                        this.setState({ newItem: newItem });
+                      }
                     }}
                   />
                 </td>
