@@ -7,21 +7,31 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 interface IProps {
+  initialValue?: number;
   onClose: () => void;
   onSubmit: (value: number) => void;
 }
 
 const PaymentPanel: React.FC<IProps> = (props: IProps) => {
-  const [input, setInput] = React.useState('');
+  const [input, setInput] = React.useState(
+    props.initialValue
+      ? props.initialValue.toFixed(2).replace('.', '')
+      : ''
+  );
 
   const style: React.CSSProperties = {
     minWidth: '40%',
     minHeight: '60%'
   }
 
-  function getDecimal(value: string) {
-    // console.log(`Input length: ${input.length} | Value: ${input}`);
-    
+  const onSubmit = () => {
+    const value = Number.parseFloat(getDecimal(input));
+    console.log(`Value returned: ${value}`);
+    props.onSubmit(value);
+    props.onClose();
+  };
+
+  const getDecimal = (value: string) => {
     if (value === '') {
       return '0.00';
     } else if (value.length < 3) {
@@ -61,7 +71,7 @@ const PaymentPanel: React.FC<IProps> = (props: IProps) => {
           }
         }}
       />
-      <Button className="btn btn-lg w-100 btn-success shadow-tight my-2">
+      <Button className="btn btn-lg w-100 btn-success shadow-tight my-2" onClick={onSubmit}>
         Pay
       </Button>
     </div>
