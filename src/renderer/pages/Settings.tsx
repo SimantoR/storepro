@@ -10,8 +10,8 @@ import { EntityManager } from 'typeorm';
 import { ROOT_PATH, logErr } from '../system';
 import path from 'path'
 import * as fs from 'fs'
-import AddToInventory from './AddToInventory';
-import Employee from './Employee';
+import AddToInventory from '../components/AddToInventory';
+import Employee from '../components/Employee';
 
 //#region Extra Interfaces
 interface Lock {

@@ -17,9 +17,10 @@ import {
   faArrowLeft,
   faArrowRight,
   faMailBulk,
-  faRedo
+  faRedo,
+  faTrashAlt
 } from '@fortawesome/free-solid-svg-icons';
-import Button from './Button';
+import Button from '../components/Button';
 
 interface Props {
   database: EntityManager;
@@ -83,6 +84,25 @@ class InventoryPage extends Component<Props, State> {
         }
       });
   };
+
+  deleteItems = () => {
+    const { selected, items } = this.state;
+    const { database } = this.props;
+
+    if (!items) return;
+
+    let tasks: Promise<any>[] = []
+
+    selected.forEach((s, i) => {
+      if (s) {
+        tasks.push(database.remove<Product>(items[i]));
+      }
+    });
+
+    Promise.all(tasks)
+      .then(() => this.loadInventory())
+      .catch((err: Error) => console.warn(err.message));
+  }
 
   exportToCsv = async () => {
     const { items, selected } = this.state;
@@ -186,9 +206,9 @@ class InventoryPage extends Component<Props, State> {
             >
               <FontAwesomeIcon icon={faPlus} />
             </Link>
-            <button className="btn btn-light btn-circle btn-lg shadow-tight">
-              <FontAwesomeIcon icon={faMailBulk} />
-            </button>
+            <Button className="btn btn-light btn-circle btn-lg shadow-tight" onClick={this.deleteItems}>
+              <FontAwesomeIcon icon={faTrashAlt} />
+            </Button>
             <Button className="btn btn-light btn-circle btn-lg shadow-tight">
               <FontAwesomeIcon icon={faRedo} onClick={this.loadInventory} />
             </Button>
@@ -208,6 +228,9 @@ class InventoryPage extends Component<Props, State> {
             </Button>
           </div>
           <div className="btn-toolbar w-100 justify-content-end">
+            <Button className="btn btn-light btn-circle btn-lg shadow-tight">
+              <FontAwesomeIcon icon={faMailBulk} />
+            </Button>
             <Button
               audioSrc={require('../resources/btn_audio.wav')}
               className="btn btn-light btn-circle btn-lg shadow-tight"
@@ -247,7 +270,7 @@ class InventoryPage extends Component<Props, State> {
                 <tbody>
                   {items.length > 0 ? (
                     items.map((item, i) => (
-                      <tr key={i} className="text-center">
+                      <tr key={i} className="text-center" style={item.qty < item.minStock ? { background: 'rgba(186, 0, 0, 0.1)' } : undefined}>
                         <td>
                           <input
                             type="checkbox"
