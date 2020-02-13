@@ -57,10 +57,6 @@ export class Product {
   @Column({ type: 'real', default: 0 })
   costPrice: number;
 
-  @ManyToMany(type => Category, { nullable: true })
-  @JoinTable({ name: 'product-categories' })
-  categories?: Promise<Category[]>;
-
   @Column({ enum: UnitType })
   unitType: UnitType;
 
@@ -69,6 +65,48 @@ export class Product {
 
   @Column({ type: 'int', default: 0 })
   qty: number;
+}
+
+@Entity('transactions')
+export class Transaction {
+  @PrimaryGeneratedColumn('rowid')
+  id: number;
+
+  @Column({ type: 'real', precision: 3, nullable: false })
+  price: number
+
+  @Column({ type: 'real', precision: 3, nullable: false })
+  paid: number;
+
+  @Column('datetime')
+  timestamp: Date;
+
+  @ManyToMany(type => Product, { cascade: false })
+  products: Product[]
+
+  @Column({ enum: PaymentMethod })
+  paymentMethod: PaymentMethod;
+}
+
+@Entity('discount')
+export class Discount {
+  @PrimaryGeneratedColumn('uuid')
+  uuid: string;
+
+  @Column('datetime')
+  start: Date;
+
+  @Column('datetime')
+  end: Date;
+
+  @Column('real', { default: 0 })
+  dollarOff: number;
+
+  @Column('real', { default: 0 })
+  forQty: number;
+
+  @ManyToMany(type => Product, { cascade: false })
+  product: Product;
 }
 
 @Entity('categories')
@@ -127,18 +165,6 @@ export class OrderItem {
   qty: number;
 }
 
-@Entity('transactions')
-export class Transaction {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'real', precision: 3 })
-  paid: number;
-
-  @Column({ enum: PaymentMethod })
-  paymentMethod: PaymentMethod;
-}
-
 @Entity('suppliers')
 export class Supplier {
   @PrimaryGeneratedColumn('uuid')
@@ -154,27 +180,6 @@ export class Supplier {
   email: string;
 }
 
-@Entity('discount')
-export class Discount {
-  @PrimaryGeneratedColumn('uuid')
-  uuid: string;
-
-  @Column('datetime')
-  start: Date;
-
-  @Column('datetime')
-  end: Date;
-
-  @Column('real', { default: 0 })
-  dollarOff: number;
-
-  @Column('real', { default: 0 })
-  forQty: number;
-
-  @ManyToMany(type => Product, { cascade: false })
-  product: Product;
-}
-
 export function connect(dbConnection: string, opts?: { logging?: boolean, name?: string }): Promise<EntityManager> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -183,9 +188,7 @@ export function connect(dbConnection: string, opts?: { logging?: boolean, name?:
         database: dbConnection,
         synchronize: true,
         logging: opts && opts.logging,
-        entities: [
-          Product, Category, Transaction, Order, Supplier, OrderItem, Discount
-        ],
+        entities: [Product, Transaction, Discount],
         name: opts && opts.name
       });
       let manager = connection.createEntityManager();
