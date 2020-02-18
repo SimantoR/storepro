@@ -2,16 +2,25 @@ import React, { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import Sys from 'systeminformation';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
-import requireStatic from '../requireStatic';
+import requireStatic from '../requireStatic.js';
 import Scrollbars from 'react-custom-scrollbars';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { logErr, MenuButtonProps, loadMenu } from '../system';
-import { Product, Discount } from '../database/database';
-import { EntityManager, LessThan, MoreThan } from 'typeorm';
+import {
+  Product,
+  Discount,
+  Transaction,
+  PaymentMethod,
+  TransactionItem
+} from '../database/database';
+import { EntityManager, LessThan, MoreThan, DeepPartial } from 'typeorm';
 import { getPrinter } from 'printer';
+import { printEndOfDay } from '../tools/receipt';
 // @ts-ignore
 import receipt from 'receipt';
 import Button from '../components/Button';
+import PaymentPanel from '../components/PaymentPanel';
+import 'datejs';
 import 'linqify';
 import '../resources/bootstrap.min.css';
 import '../resources/bootstrap_x.css';
@@ -29,10 +38,10 @@ import {
   IconDefinition,
   faBatteryEmpty,
   faBatteryQuarter,
-  faBatteryThreeQuarters
+  faBatteryThreeQuarters,
+  faChargingStation,
+  faPlug
 } from '@fortawesome/free-solid-svg-icons';
-import Numpad from '../components/Numpad';
-import PaymentPanel from '../components/PaymentPanel';
 
 receipt.config = {
   ...receipt.config,
@@ -51,7 +60,7 @@ interface Props {
 }
 
 interface State {
-  items?: Item[];
+  items: Item[];
   connStatus: boolean;
   multiplier?: number;
   skuInput: string;
@@ -63,18 +72,46 @@ interface State {
 }
 
 interface Item {
-  name: string;
+  product: Product;
   qty: number;
-  unitPrice: number;
-  sku: string;
 }
 
 const greenDot = requireStatic('green_dot.webp');
 const redDot = requireStatic('red_dot.webp');
 
 function round_to_precision(x: number, precision?: number) {
-  var y = +x + (precision === undefined ? 0.5 : precision / 2);
-  return y - (y % (precision === undefined ? 1 : +precision));
+  let y = x + (precision === undefined ? 0.5 : precision / 2);
+  return y - (y % (precision === undefined ? 1 : precision));
+}
+
+function getBatteryStatus(): Promise<IconDefinition> {
+  return new Promise<IconDefinition>((resolve, reject) => {
+    Sys.battery()
+      .then(({ hasbattery, ischarging, percent, acconnected }) => {
+        let ico: IconDefinition = faDesktop;
+        if (hasbattery) {
+          if (ischarging) {
+            ico = faPlug;
+          } else if (acconnected) {
+            ico = faChargingStation;
+          } else {
+            if (percent > 75) {
+              ico = faBatteryFull;
+            } else if (percent > 50) {
+              ico = faBatteryThreeQuarters;
+            } else if (percent > 25) {
+              ico = faBatteryHalf;
+            } else if (percent > 0) {
+              ico = faBatteryQuarter;
+            } else {
+              ico = faBatteryEmpty;
+            }
+          }
+        }
+        resolve(ico);
+      })
+      .catch(err => reject(err));
+  });
 }
 
 class Landing extends React.Component<Props, State> {
@@ -94,6 +131,10 @@ class Landing extends React.Component<Props, State> {
   }
 
   componentDidMount() {
+    this.props.dbManager.find(Transaction)
+      .then(transactions => console.log(transactions));
+    
+    console.info(printEndOfDay(this.props.dbManager));
     loadMenu()
       .then(menu => {
         this.setState({ menu: menu });
@@ -104,27 +145,24 @@ class Landing extends React.Component<Props, State> {
           logErr(err);
         }
       });
-    const checkBattery = () => {
-      Sys.battery().then(({ hasbattery, ischarging, percent }) => {
-        if (hasbattery && ischarging) {
-          let ico: IconDefinition = faDesktop;
-          if (percent > 75) {
-            ico = faBatteryFull;
-          } else if (percent > 50) {
-            ico = faBatteryThreeQuarters;
-          } else if (percent > 25) {
-            ico = faBatteryHalf;
-          } else if (percent > 0) {
-            ico = faBatteryQuarter;
-          } else {
-            ico = faBatteryEmpty;
-          }
-          this.setState({ batteryStatus: <FontAwesomeIcon icon={ico} /> });
-        }
-      });
-    };
 
-    setInterval(checkBattery, 5 * 60 * 1000);
+    getBatteryStatus()
+      .then(icon => {
+        this.setState({ batteryStatus: <FontAwesomeIcon icon={icon} /> });
+      })
+      .catch((err: Error) => logErr(err));
+
+    setInterval(() => {
+      getBatteryStatus()
+        .then(icon => {
+          this.setState({ batteryStatus: <FontAwesomeIcon icon={icon} /> });
+        })
+        .catch((err: Error) => logErr(err));
+    }, 30 * 1000);
+
+    // this.props.dbManager.findOne(Transaction, {
+    //   where: { id: 1 }
+    // }).then(x => console.log(x));
   }
 
   /** Add product to card */
@@ -132,37 +170,26 @@ class Landing extends React.Component<Props, State> {
     const { dbManager: database } = this.props;
     const { items, multiplier } = this.state;
 
-    let itemStore = items ?? [];
+    // let itemStore = items ?? [];
 
-    if (itemStore.Any(x => x.sku === sku)) {
-      const ind = itemStore.findIndex(x => x.sku === sku);
-      itemStore[ind].qty += multiplier ?? 1;
+    if (items.Any(({ product }) => product.sku === sku)) {
+      const ind = items.findIndex(({ product }) => product.sku === sku);
+      items[ind].qty += multiplier ?? 1;
     } else {
       const product = await database.findOne(Product, { where: { sku: sku } });
 
       if (!product) return;
 
-      if (!items) {
-        itemStore.push({
-          name: product.name,
-          sku: product.sku,
-          qty: multiplier ?? 1,
-          unitPrice: product.costPrice
-        });
-      } else {
-        itemStore.push({
-          name: product.name,
-          sku: product.sku,
-          qty: multiplier ?? 1,
-          unitPrice: product.costPrice
-        });
-      }
+      items.push({
+        product: product,
+        qty: multiplier ?? 1
+      });
     }
 
     this.setState({
-      items: itemStore,
+      items: items,
       multiplier: undefined
-    })
+    });
   };
 
   searchProduct = ({
@@ -177,32 +204,27 @@ class Landing extends React.Component<Props, State> {
       })
       .then(product => {
         if (items) {
-          // if (items.Any(x => x.sku === product.sku)) {
-          //     let item = items.Where(x => x.sku === product.sku).First()
-          // }
           items.push({
-            name: product.name,
-            qty: multiplier ?? 1,
-            sku: product.sku,
-            unitPrice: product.costPrice
+            product: product,
+            qty: multiplier ?? 1
           });
-          dbManager
-            .find(Discount, {
-              where: {
-                product: product,
-                start: LessThan(new Date()),
-                end: MoreThan(new Date())
-              }
-            })
-            .then(discounts => {
-              if (discounts.length !== 0) {
-                return discounts.map(_discount => ({
-                  sku: product.sku,
-                  discount: _discount.dollarOff,
-                  qty: _discount.forQty
-                }));
-              }
-            });
+          // dbManager
+          //   .find(Discount, {
+          //     where: {
+          //       product: product,
+          //       start: LessThan(new Date()),
+          //       end: MoreThan(new Date())
+          //     }
+          //   })
+          //   .then(discounts => {
+          //     if (discounts.length !== 0) {
+          //       return discounts.map(_discount => ({
+          //         sku: product.sku,
+          //         discount: _discount.dollarOff,
+          //         qty: _discount.forQty
+          //       }));
+          //     }
+          //   });
         }
         this.setState({ skuInput: '', multiplier: undefined });
       })
@@ -213,21 +235,61 @@ class Landing extends React.Component<Props, State> {
   };
 
   showPayment = () => {
-    const { paid, items } = this.state;
+    const { items } = this.state;
+    const { dbManager: database } = this.props;
 
     const closePaymentWin = () => this.setState({ hoverElement: undefined });
-    const onSubmit = (value: number) => {
-      let newState: Partial<State> = { paid: value }
 
-      let subTotal = items ? items.Sum(item => item.unitPrice * item.qty) : 0;
+    const onSubmit = async (value: number) => {
+      let newState: Partial<State> = { paid: value };
+
+      let subTotal = items
+        ? items.Sum(({ product, qty }) => product.costPrice * qty)
+        : 0;
       let hst_gst = subTotal * 0.15;
       let total = round_to_precision(subTotal + hst_gst - (value || 0), 2);
 
       if (total <= 0) {
-        this.printReceipt();
+        // create transaction
+        let transaction = database.create(Transaction, {
+          paid: value,
+          price: total,
+          paymentMethod: PaymentMethod.credit,
+          timestamp: new Date()
+        });
+
+        // create transaction items
+        let transactionItems = items.map(item => {
+          return database.create(TransactionItem, {
+            product: item.product,
+            qty: item.qty
+          });
+        });
+
+        // transaction.items = transactionItems;
+
+        database.save(Transaction, transaction)
+          .then(result => {
+            transactionItems.forEach(t => {
+              t.transaction = result
+            });
+
+            database.save(TransactionItem, transactionItems)
+            .then(() => this.setState({ paid: value }))
+            .catch(err => console.log(err))
+          })
+          .catch(err => console.log(err));
+
+        // database.save(TransactionItem, transactionItems)
+        //   .then(result => {
+        //     transaction.items = result;
+        //     database.save(Transaction, transaction)
+        //       .then(() => this.setState({ paid: value }))
+        //       .catch(err => console.log(err))
+        //   })
+        //   .catch(err => console.log(err));
       }
-      this.setState(prevState => ({ ...prevState, ...newState }));
-    }
+    };
 
     this.setState({
       hoverElement: (
@@ -246,31 +308,25 @@ class Landing extends React.Component<Props, State> {
     });
   };
 
-  formatReceipt = (params?: {
-    currency?: string;
-    width?: number;
-    ruler?: string;
-  }) => {
+  formatReceipt = (
+    id: number,
+    params?: { currency?: string; width?: number; ruler?: string }
+  ) => {
     let { items } = this.state;
+
+    // get transaction id
+    const transactionId = id.toString().padStart(9, '0');
 
     items = items?.sort((a, b) => b.qty - a.qty);
 
-    let subTotal = items ? items?.Sum(item => item.unitPrice * item.qty) : 0;
+    let subTotal = items
+      ? items?.Sum(({ product, qty }) => product.costPrice * qty)
+      : 0;
+
     let hst_gst = subTotal * 0.15;
     let total = subTotal + hst_gst;
 
-    if (params) {
-      receipt.config = { ...receipt.config, ...params };
-    }
-
-    // const defaultConf = {
-    //     currency: '$',
-    //     width: 40,
-    //     ruler: '-'
-    // };
-
-    // receipt.config = { ...receipt.config, ...defaultConf, ...params };
-    console.log(receipt.config);
+    if (params) receipt.config = { ...receipt.config, ...params };
 
     let output: string = receipt.create([
       {
@@ -287,17 +343,16 @@ class Landing extends React.Component<Props, State> {
       {
         type: 'properties',
         lines: [
-          // { name: 'Date', value: new Date().toString("dd/MM/yyyy hh:mm tt") },
-          { name: 'Date', value: '23/04/1995 12:04 PM' },
-          { name: 'Order Number', value: '0123456789' }
+          { name: 'Date', value: new Date().toString('dd/MM/yyyy hh:mm tt') },
+          { name: 'Order Number', value: transactionId }
         ]
       },
       {
         type: 'table',
-        lines: items?.map(item => ({
-          item: item.name,
-          qty: item.qty,
-          cost: item.unitPrice * 100
+        lines: items?.map(({ product, qty }) => ({
+          item: product.name,
+          qty: qty,
+          cost: product.costPrice * 100
         }))
       },
       // {
@@ -332,8 +387,9 @@ class Landing extends React.Component<Props, State> {
       { type: 'empty' },
       {
         type: 'text',
-        value:
-          "Thank you for shopping at Taste East! If you have any requests or complains, don't forget to contact us. Have a great day!",
+        value: `Thank you for shopping at Taste East!
+          If you have any requests or complains,
+          don't forget to contact us. Have a great day!`,
         align: 'center',
         padding: 5
       },
@@ -341,10 +397,12 @@ class Landing extends React.Component<Props, State> {
       { type: 'empty' }
     ]);
 
+    console.log(output);
+
     return output;
   };
 
-  printReceipt = () => {
+  printReceipt = (receiptTxt: string) => {
     const { printer } = this.props;
 
     try {
@@ -361,11 +419,10 @@ class Landing extends React.Component<Props, State> {
         return;
       }
 
-      let receiptText = this.formatReceipt();
-      console.log(receiptText);
+      console.log(receiptTxt);
 
       printer.clear();
-      printer.print(receiptText);
+      printer.print(receiptTxt);
       printer.cut();
       printer.execute();
       printer.clear();
@@ -384,12 +441,14 @@ class Landing extends React.Component<Props, State> {
       <table className="table table-striped table-borderless w-100">
         <colgroup>
           <col width="50%" />
-          <col width="4%" />
+          <col width="5%" />
           <col width="20%" />
-          <col width="20%" />
-          <col width="6%" />
+          <col width="15%" />
+          <col width="10%" />
         </colgroup>
-        <thead>
+        <thead
+          style={{ background: 'linear-gradient(0.5turn, #f8f9fa, #ededed)' }}
+        >
           <tr className="border-bottom">
             <th className="text-center">Name</th>
             <th className="text-center">Qty</th>
@@ -399,14 +458,14 @@ class Landing extends React.Component<Props, State> {
           </tr>
         </thead>
         <tbody>
-          {items.map((item, i) => {
+          {items.map(({ product, qty }, i) => {
             return (
               <tr key={i}>
                 {/* <td className="text-center border-right">{i + 1}</td> */}
-                <td>{item.name}</td>
-                <td className="text-center">{item.qty}</td>
-                <td className="text-center">$ {item.unitPrice}</td>
-                <td className="text-center">$ {item.unitPrice * item.qty}</td>
+                <td>{product.name}</td>
+                <td className="text-center">{qty}</td>
+                <td className="text-center">$ {product.costPrice}</td>
+                <td className="text-center">$ {product.costPrice * qty}</td>
                 <td className="text-center">
                   <Button
                     className="btn btn-sm btn-circle btn-danger shadow-tight"
@@ -457,7 +516,9 @@ class Landing extends React.Component<Props, State> {
       display: 'inline-block'
     };
 
-    let subTotal = items ? items.Sum(item => item.unitPrice * item.qty) : 0;
+    let subTotal = items
+      ? items.Sum(item => item.product.costPrice * item.qty)
+      : 0;
     let hst_gst = subTotal * 0.15;
     let total = subTotal + hst_gst - (paid || 0);
 
@@ -487,7 +548,7 @@ class Landing extends React.Component<Props, State> {
           )}
           <Button className="btn btn-sm btn-icon">
             <FontAwesomeIcon icon={faStore} /> StorePro
-                    </Button>
+          </Button>
           <Button className="btn btn-sm btn-icon">
             <small className="text-monospace">Version: 0.0.3</small>
           </Button>
@@ -500,7 +561,7 @@ class Landing extends React.Component<Props, State> {
             />
           </button>
         </div>
-        <div className=" flex-grow-1 d-flex h-100 w-100">
+        <div className="flex-grow-1 d-flex h-100 w-100">
           <div
             className="d-flex flex-column h-100 border-right"
             style={{ width: '55vw' }}
@@ -589,7 +650,9 @@ class Landing extends React.Component<Props, State> {
               <Button
                 className="btn btn-xl btn-circle shadow-tight"
                 style={redBtn}
-                onClick={() => { this.setState({ items: [], paid: undefined }) }}
+                onClick={() => {
+                  this.setState({ items: [], paid: undefined });
+                }}
               >
                 <FontAwesomeIcon icon={faBackspace} />
               </Button>
@@ -603,6 +666,7 @@ class Landing extends React.Component<Props, State> {
                 <FontAwesomeIcon icon={faMoneyBill} />
               </button>
               <Button
+                disabled={total == 0}
                 className="btn btn-xl btn-circle text-white shadow-tight"
                 style={{
                   textShadow: '3px 5px 3px #7a4b41',
@@ -632,7 +696,8 @@ class Landing extends React.Component<Props, State> {
             </form>
             <div className="flex-grow-1">
               <Scrollbars className="w-100 h-100">
-                <div className="p-3">{this.renderTable()}</div>
+                {/* <div className="">{this.renderTable()}</div> */}
+                {this.renderTable()}
               </Scrollbars>
             </div>
             <div

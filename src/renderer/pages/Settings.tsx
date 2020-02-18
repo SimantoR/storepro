@@ -1,57 +1,29 @@
 import React, { Component } from 'react';
 import { Link, NavLink, Switch, Route } from 'react-router-dom';
-import SwitchToggler from 'react-switch';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLock, faChevronCircleLeft, faUnlock } from '@fortawesome/free-solid-svg-icons';
-import { printer as ThermalPrinter, types as PrinterTypes } from 'node-thermal-printer';
+import { printer as ThermalPrinter } from 'node-thermal-printer';
+import SwitchToggler from 'react-switch';
 import Scrollbars from 'react-custom-scrollbars';
+import { AppConfig, AppContext, AppConfigContext } from '../App';
 import InventoryPage from './Inventory';
 import { EntityManager } from 'typeorm';
-import { ROOT_PATH, logErr } from '../system';
-import path from 'path'
-import * as fs from 'fs'
+import { ROOT_PATH, logErr, saveSettings } from '../system';
+import path from 'path';
+import * as fs from 'promise-fs';
 import AddToInventory from '../components/AddToInventory';
-import Employee from '../components/Employee';
+import Sales from './Sales';
 
-//#region Extra Interfaces
-interface Lock {
-  voids: boolean,
-  refunds: boolean
+
+interface Props {
+  dbManager: EntityManager,
+  printer: ThermalPrinter
 }
 
-interface AppConfig {
-  lock: { voids: boolean, refunds: boolean },
-  misc: { keyboard: boolean, sound: boolean },
-  printOnSale: boolean,
-  cashDrawer: {
-    enabled: boolean,
-    requireManager: boolean,
-    openOnSale: boolean
-  },
-  payment: {
-    enableGiftCard: boolean,
-    useLoyaltyCard: boolean,
-    enableExternalPayments: boolean
-  }
+interface State {
+  conf: AppConfig;
+  authenticated: boolean;
 }
-
-interface _AppConfig {
-  app: {
-    sleepAfter?: number, // seconds
-    keyboard: boolean,
-    sound: boolean
-  },
-  manager: {
-    allowRefunds: boolean,
-    allowVoids: boolean,
-    allowDrawerAccess: boolean
-  },
-  sync: {
-    syncInterval: number, // minutes
-    encrypt: boolean, // takes paid subscription
-  }
-}
-//#endregion
 
 //#region CONSTs
 const SwitchProps = {
@@ -65,89 +37,78 @@ const SwitchProps = {
   height: 20,
   width: 48,
 }
-//#endregion
 
-interface Props {
-  dbManager: EntityManager,
-  printer: ThermalPrinter
-}
+// const defaultConf: AppConfig = {
+//   app: {
+//     keyboard: true,
+//     sound: true
+//   },
+//   manager: {
+//     cashDrawer: {
+//       allowAccess: false,
+//       openOnSale: true,
+//     },
+//     payment: {
+//       giftCards: false,
+//       loyaltyCards: false,
+//       USDollar: true
+//     },
+//     allowRefunds: true,
+//     allowVoids: true,
+//     printOnSale: true
+//   },
+//   sync: {
+//     encrypt: true,
+//     syncInterval: 60
+//   }
+// }
+// //#endregion
 
-interface State {
-  conf: AppConfig,
-  authenticated: boolean,
-  conf2: _AppConfig
-}
+class Settings2 extends Component<Props, State> {
+  context: AppConfigContext;
 
-const defaultConf: _AppConfig = {
-  app: {
-    keyboard: true,
-    sound: true
-  },
-  manager: {
-    allowRefunds: true,
-    allowVoids: true,
-    allowDrawerAccess: false
-  },
-  sync: {
-    encrypt: false,
-    syncInterval: 60
-  }
-}
-
-class Settings extends Component<Props, State> {
   constructor(props: any) {
     super(props);
+    this.context = React.useContext(AppContext);
     this.state = {
-      conf: {
-        lock: { refunds: false, voids: true },
-        misc: { keyboard: true, sound: false },
-        printOnSale: true,
-        cashDrawer: { enabled: true, openOnSale: true, requireManager: false },
-        payment: {
-          enableGiftCard: false,
-          useLoyaltyCard: true,
-          enableExternalPayments: false
-        }
-      },
       authenticated: false,
-      conf2: defaultConf
+      conf: this.context.conf
     }
   }
 
   componentDidMount() {
-    this.loadSettings().then(conf => {
-      this.setState({ conf: conf })
-    }).catch((err: Error) => {
-      logErr(err);
-      console.warn(err);
-    })
+    this.loadSettings();
   }
 
   componentDidCatch() {
     console.log('Component Fucked up');
   }
 
-  loadSettings = (): Promise<AppConfig> => {
-    return new Promise<AppConfig>((resolve, reject) => {
-      let filePath = path.resolve(ROOT_PATH, 'conf.json');
-      if (fs.existsSync(filePath)) {
-        fs.readFile(filePath, { encoding: 'utf8' }, (err, data) => {
-          resolve(JSON.parse(data));
-        });
-      } else {
-        reject(new Error("File doesn't exist"))
-      }
-    })
+  loadSettings = () => {
+    const filePath = path.resolve(ROOT_PATH, 'conf.json');
+    if (fs.existsSync(filePath)) {
+      fs.readFile(filePath, { encoding: 'utf8' })
+        .then(confBuffer => {
+          const conf: AppConfig = JSON.parse(confBuffer);
+          this.setState({ conf: conf });
+        })
+        .catch((err: Error) => console.error(err.message));
+    } else {
+      console.warn('No configuration found');
+    }
   }
 
-  saveSettings = ({ preventDefault }: React.MouseEvent<HTMLButtonElement>) => {
-    preventDefault();
-    return new Promise<void>((resolve, reject) => {
-      fs.writeFile(path.resolve(ROOT_PATH, 'conf.json'), JSON.stringify(this.state.conf), err => {
-        if (err) reject(err);
-        else resolve();
-      })
-    })
+  saveSettings = (ev: React.MouseEvent<HTMLButtonElement>) => {
+    if (ev.preventDefault) {
+      ev.preventDefault();
+    }
+    else {
+      debugger;
+    }
+    const filePath = path.resolve(ROOT_PATH, 'conf.json');
+    fs.writeFile(filePath, JSON.stringify(this.state.conf))
+      .then(() => console.log('Settings saved'))
+      .catch((err: Error) => console.log(err.message));
   }
 
   submitLocks = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -167,27 +128,22 @@ class Settings extends Component<Props, State> {
 
   render() {
     const {
-      conf: {
-        cashDrawer,
-        lock,
-        misc,
-        printOnSale,
-        payment
-      },
-      conf2,
+      conf,
       authenticated
-    } = this.state
+    } = this.state;
 
     return (
       <div className="vw-100 vh-100 bg-light">
         <div className="d-flex h-100">
           {/* Sidebar */}
           <div className="bg-dark d-flex flex-column p-2" style={{ width: '15vw', height: '100%' }}>
-            <Link to="/" className="btn btn-red btn-circle shadow-tight mb-2">
-              <div className="h-100 d-flex justify-content-center align-items-center">
-                <FontAwesomeIcon icon={faChevronCircleLeft} />
-              </div>
-            </Link>
+            <div>
+              <Link to="/" className="btn btn-red shadow-tight btn-lg mb-2">
+                <div className="h-100 d-flex justify-content-center align-items-center">
+                  <FontAwesomeIcon icon={faChevronCircleLeft} />
+                </div>
+              </Link>
+            </div>
             <div className="d-flex flex-column w-100">
               <div className="my-1">
                 <NavLink exact to="/settings" className="w-100 btn btn-lg rounded btn-outline-light border-0">
@@ -197,8 +153,11 @@ class Settings extends Component<Props, State> {
               <div className="my-1">
                 <NavLink to="/settings/inventory" className="w-100 btn btn-lg rounded btn-outline-light border-0">Inventory</NavLink>
               </div>
-              <div className="my-1">
+              {/* <div className="my-1">
                 <NavLink to="/settings/employees" className="w-100 btn btn-lg rounded btn-outline-light border-0">Employees</NavLink>
+              </div> */}
+              <div className="my-1">
+                <NavLink to="/settings/sales" className="w-100 btn btn-lg rounded btn-outline-light border-0">Sales</NavLink>
               </div>
             </div>
           </div>
@@ -211,25 +170,25 @@ class Settings extends Component<Props, State> {
               <Route exact path="/settings/inventory">
                 <InventoryPage database={this.props.dbManager} />
               </Route>
-              <Route exact path="/settings/employees">
-                <Employee database={this.props.dbManager} />
+              <Route exact path="/settings/sales">
+                <Sales database={this.props.dbManager} />
               </Route>
               <Route exact path="/settings">
                 <Scrollbars className="w-100 h-100">
                   <div className="card-columns p-4" style={{ columnCount: 2 }}>
-                    <div className="card shadow">
-                      <div className="card-body">
+                    <div className="card">
+                      <div className="card-body shadow">
                         <h4 className="card-title">MISC</h4>
                         <ul className="list-group list-group-flush">
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={conf2.app.keyboard}
-                              onChange={checked => this.setState(({ conf2 }) => ({
-                                conf2: {
-                                  ...conf2,
+                              checked={conf.app.keyboard}
+                              onChange={checked => this.setState(({ conf }) => ({
+                                conf: {
+                                  ...conf,
                                   app: {
-                                    ...conf2.app,
+                                    ...conf.app,
                                     keyboard: checked
                                   }
                                 }
@@ -240,12 +199,12 @@ class Settings extends Component<Props, State> {
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={conf2.app.sound}
+                              checked={conf.app.sound}
                               onChange={checked => this.setState(({ conf: config }) => ({
-                                conf2: {
-                                  ...conf2,
+                                conf: {
+                                  ...conf,
                                   app: {
-                                    ...conf2.app,
+                                    ...conf.app,
                                     sound: checked
                                   }
                                 }
@@ -256,8 +215,8 @@ class Settings extends Component<Props, State> {
                         </ul>
                       </div>
                     </div>
-                    <div className="card shadow">
-                      <div className="card-body">
+                    <div className="card">
+                      <div className="card-body shadow">
                         <h4 className="card-title">Lock Higher Level Access</h4>
                         <p className="card-text">
                           This signifies a manager as requirement for voids, refunds etc.
@@ -267,9 +226,9 @@ class Settings extends Component<Props, State> {
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
                               disabled={!authenticated}
-                              checked={lock.refunds}
+                              checked={conf.manager.allowRefunds}
                               onChange={checked => this.setState(({ conf }) => ({
-                                conf: { ...conf, lock: { ...lock, refunds: checked } }
+                                conf: { ...conf, manager: { ...conf.manager, allowRefunds: checked } }
                               }))}
                             />
                             <div className="pl-2">
@@ -279,10 +238,10 @@ class Settings extends Component<Props, State> {
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={lock.voids}
+                              checked={conf.manager.allowVoids}
                               disabled={!authenticated}
                               onChange={checked => this.setState(({ conf }) => ({
-                                conf: { ...conf, lock: { ...lock, voids: checked } }
+                                conf: { ...conf, manager: { ...conf.manager, allowVoids: checked } }
                               }))}
                             />
                             <div className="pl-2">Voids</div>
@@ -291,7 +250,7 @@ class Settings extends Component<Props, State> {
                         <div className="text-right pt-2">
                           {!authenticated
                             ? (
-                              <button className="btn btn-danger shadow-tight" onClick={() => this.setState({ authenticated: true })}>
+                              <button className="btn btn-red shadow-tight" onClick={() => this.setState({ authenticated: true })}>
                                 <FontAwesomeIcon icon={faLock} />{' '}Unlock
                           </button>
                             ) : (
@@ -303,86 +262,101 @@ class Settings extends Component<Props, State> {
                         </div>
                       </div>
                     </div>
-                    <div className="card shadow">
-                      <div className="card-body">
+                    <div className="card">
+                      <div className="card-body shadow">
                         <h4 className="card-title">Printer &amp; Cash Drawer</h4>
                         <ul className="list-group list-group-flush">
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={cashDrawer.enabled}
+                              // checked={cashDrawer.enabled}
+                              checked={conf.manager.cashDrawer.allowAccess}
                               onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, cashDrawer: { ...cashDrawer, enabled: checked } }
+                                conf: {
+                                  ...conf,
+                                  manager: {
+                                    ...conf.manager,
+                                    cashDrawer: {
+                                      ...conf.manager.cashDrawer,
+                                      allowAccess: checked
+                                    }
+                                  }
+                                }
                               }))}
                             />
                             <div className="pl-2">Enable Cash Drawer</div>
                           </li>
-                          <li className="list-group-item d-flex align-items-center">
+                          {/* <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={cashDrawer.requireManager}
+                              // checked={cashDrawer.requireManager}
                               onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, cashDrawer: { ...cashDrawer, requireManager: checked } }
+                                conf: { ...conf, manager: { ...conf.manager, allowRefunds: checked } }
                               }))}
                             />
                             <div className="pl-2">Require Manager for Cash Drawer</div>
-                          </li>
+                          </li> */}
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={cashDrawer.openOnSale}
-                              onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, cashDrawer: { ...cashDrawer, openOnSale: checked } }
-                              }))}
+                              checked={conf.manager.cashDrawer.openOnSale}
+                              onChange={checked => this.setState(({ conf: config }) => {
+                                conf.manager.cashDrawer.openOnSale = checked;
+                                this.setState({ conf: conf })
+                              })}
                             />
                             <div className="pl-2">Open Drawer On Sale</div>
                           </li>
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={printOnSale}
-                              onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, printOnSale: checked }
-                              }))}
+                              checked={conf.manager.printOnSale}
+                              onChange={checked => this.setState(({ conf: config }) => {
+                                conf.manager.printOnSale = checked;
+                                this.setState({ conf: conf });
+                              })}
                             />
                             <div className="pl-2">Print receipt on Sale</div>
                           </li>
                         </ul>
                       </div>
                     </div>
-                    <div className="card shadow">
-                      <div className="card-body">
+                    <div className="card">
+                      <div className="card-body shadow">
                         <h4 className="card-title">Payment Options</h4>
                         <ul className="list-group list-group-flush">
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={payment.enableGiftCard}
-                              onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, payment: { ...payment, enableGiftCard: checked } }
-                              }))}
+                              checked={conf.manager.payment.giftCards}
+                              onChange={checked => this.setState(({ conf: config }) => {
+                                conf.manager.payment.giftCards = checked;
+                                this.setState({ conf: conf });
+                              })}
                             />
                             <div className="pl-2">Enable Gift Cards</div>
                           </li>
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={payment.useLoyaltyCard}
-                              onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, payment: { ...payment, useLoyaltyCard: checked } }
-                              }))}
+                              checked={conf.manager.payment.loyaltyCards}
+                              onChange={checked => this.setState(({ conf: config }) => {
+                                conf.manager.payment.loyaltyCards = checked;
+                                this.setState({ conf: conf })
+                              })}
                             />
                             <div className="pl-2">Use Loyalty Cards</div>
                           </li>
                           <li className="list-group-item d-flex align-items-center">
                             <SwitchToggler className="form-check-input"
                               {...SwitchProps}
-                              checked={payment.enableExternalPayments}
-                              onChange={checked => this.setState(({ conf: config }) => ({
-                                conf: { ...config, payment: { ...payment, enableExternalPayments: checked } }
-                              }))}
+                              checked={conf.manager.payment.USDollar}
+                              onChange={checked => this.setState(({ conf: config }) => {
+                                conf.manager.payment.USDollar = checked;
+                                this.setState({ conf: conf })
+                              })}
                             />
-                            <div className="pl-2">Enable External Payments</div>
+                            <div className="pl-2">Accept US Dollars</div>
                           </li>
                         </ul>
                       </div>
@@ -399,6 +373,244 @@ class Settings extends Component<Props, State> {
       </div>
     );
   }
+}
+
+const Settings: React.FC<Props> = (props: Props) => {
+  const context = React.useContext(AppContext);
+  
+  const [conf, setConf] = React.useState<AppConfig>(context.conf);
+  const [authenticated, setAuth] = React.useState(false);
+
+  return (
+    <div className="vw-100 vh-100 bg-light">
+      <div className="d-flex h-100">
+        {/* Sidebar */}
+        <div className="bg-dark d-flex flex-column p-2" style={{ width: '15vw', height: '100%' }}>
+          <div>
+            <Link to="/" className="btn btn-red shadow-tight btn-lg mb-2">
+              <div className="h-100 d-flex justify-content-center align-items-center">
+                <FontAwesomeIcon icon={faChevronCircleLeft} />
+              </div>
+            </Link>
+          </div>
+          <div className="d-flex flex-column w-100">
+            <div className="my-1">
+              <NavLink exact to="/settings" className="w-100 btn btn-lg rounded btn-outline-light border-0">
+                General
+                </NavLink>
+            </div>
+            <div className="my-1">
+              <NavLink to="/settings/inventory" className="w-100 btn btn-lg rounded btn-outline-light border-0">Inventory</NavLink>
+            </div>
+            {/* <div className="my-1">
+                <NavLink to="/settings/employees" className="w-100 btn btn-lg rounded btn-outline-light border-0">Employees</NavLink>
+              </div> */}
+            <div className="my-1">
+              <NavLink to="/settings/sales" className="w-100 btn btn-lg rounded btn-outline-light border-0">Sales</NavLink>
+            </div>
+          </div>
+        </div>
+        {/* Content */}
+        <div className="flex-grow-1" style={{ width: '85vw' }}>
+          <Switch>
+            <Route exact path="/settings/inventory/add">
+              <AddToInventory database={props.dbManager} />
+            </Route>
+            <Route exact path="/settings/inventory">
+              <InventoryPage database={props.dbManager} />
+            </Route>
+            <Route exact path="/settings/sales">
+              <Sales database={props.dbManager} />
+            </Route>
+            <Route exact path="/settings">
+              <Scrollbars className="w-100 h-100">
+                <div className="card-columns p-4" style={{ columnCount: 2 }}>
+                  <div className="card">
+                    <div className="card-body shadow">
+                      <h4 className="card-title">MISC</h4>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.app.keyboard}
+                            onChange={checked => {
+                              conf.app.keyboard = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Keyboard Mode</div>
+                        </li>
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.app.sound}
+                            onChange={checked => {
+                              conf.app.sound = !checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Sound</div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-body shadow">
+                      <h4 className="card-title">Lock Higher Level Access</h4>
+                      <p className="card-text">
+                        This signifies a manager as requirement for voids, refunds etc.
+                        </p>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            disabled={!authenticated}
+                            checked={conf.manager.allowRefunds}
+                            onChange={checked => {
+                              conf.manager.allowRefunds = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">
+                            Refunds
+                        </div>
+                        </li>
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.allowVoids}
+                            disabled={!authenticated}
+                            onChange={checked => {
+                              conf.manager.allowVoids = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Voids</div>
+                        </li>
+                      </ul>
+                      <div className="text-right pt-2">
+                        {!authenticated
+                          ? (
+                            <button className="btn btn-red shadow-tight" onClick={() => setAuth(true)}>
+                              <FontAwesomeIcon icon={faLock} />{' '}Unlock
+                          </button>
+                          ) : (
+                            <button className="btn btn-success shadow-tight" onClick={() => setAuth(false)}>
+                              <FontAwesomeIcon icon={faUnlock} />{' '}Lock
+                          </button>
+                          )
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-body shadow">
+                      <h4 className="card-title">Printer &amp; Cash Drawer</h4>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            // checked={cashDrawer.enabled}
+                            checked={conf.manager.cashDrawer.allowAccess}
+                            onChange={checked => {
+                              conf.manager.cashDrawer.allowAccess = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Enable Cash Drawer</div>
+                        </li>
+                        {/* <li className="list-group-item d-flex align-items-center">
+                            <SwitchToggler className="form-check-input"
+                              {...SwitchProps}
+                              // checked={cashDrawer.requireManager}
+                              onChange={checked => this.setState(({ conf: config }) => ({
+                                conf: { ...conf, manager: { ...conf.manager, allowRefunds: checked } }
+                              }))}
+                            />
+                            <div className="pl-2">Require Manager for Cash Drawer</div>
+                          </li> */}
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.cashDrawer.openOnSale}
+                            onChange={checked => {
+                              conf.manager.cashDrawer.openOnSale = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Open Drawer On Sale</div>
+                        </li>
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.printOnSale}
+                            onChange={checked => {
+                              conf.manager.printOnSale = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Print receipt on Sale</div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-body shadow">
+                      <h4 className="card-title">Payment Options</h4>
+                      <ul className="list-group list-group-flush">
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.payment.giftCards}
+                            onChange={checked => {
+                              conf.manager.payment.giftCards = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Enable Gift Cards</div>
+                        </li>
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.payment.loyaltyCards}
+                            onChange={checked => {
+                              conf.manager.payment.loyaltyCards = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Use Loyalty Cards</div>
+                        </li>
+                        <li className="list-group-item d-flex align-items-center">
+                          <SwitchToggler className="form-check-input"
+                            {...SwitchProps}
+                            checked={conf.manager.payment.USDollar}
+                            onChange={checked => {
+                              conf.manager.payment.USDollar = checked;
+                              setConf(conf);
+                            }}
+                          />
+                          <div className="pl-2">Accept US Dollars</div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 text-right">
+                  <button className="btn btn-lg shadow-tight btn-success" onClick={() => {
+                    setConf(conf);
+                    saveSettings(conf);
+                    context.setConf(conf);
+                  }}>
+                    Save All
+                  </button>
+                </div>
+              </Scrollbars>
+            </Route>
+          </Switch>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default Settings;
