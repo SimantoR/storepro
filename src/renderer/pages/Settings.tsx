@@ -377,7 +377,7 @@ class Settings2 extends Component<Props, State> {
 
 const Settings: React.FC<Props> = (props: Props) => {
   const context = React.useContext(AppContext);
-  
+
   const [conf, setConf] = React.useState<AppConfig>(context.conf);
   const [authenticated, setAuth] = React.useState(false);
 
@@ -434,8 +434,7 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.app.keyboard}
                             onChange={checked => {
-                              conf.app.keyboard = checked;
-                              setConf(conf);
+                              setConf({ ...conf, app: { ...conf.app, keyboard: checked } });
                             }}
                           />
                           <div className="pl-2">Keyboard Mode</div>
@@ -445,8 +444,7 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.app.sound}
                             onChange={checked => {
-                              conf.app.sound = !checked;
-                              setConf(conf);
+                              setConf({ ...conf, app: { ...conf.app, sound: checked } });
                             }}
                           />
                           <div className="pl-2">Sound</div>
@@ -482,7 +480,7 @@ const Settings: React.FC<Props> = (props: Props) => {
                             disabled={!authenticated}
                             onChange={checked => {
                               conf.manager.allowVoids = checked;
-                              setConf(conf);
+                              setConf({ ...conf, manager: { ...conf.manager, allowVoids: checked } });
                             }}
                           />
                           <div className="pl-2">Voids</div>
@@ -513,8 +511,16 @@ const Settings: React.FC<Props> = (props: Props) => {
                             // checked={cashDrawer.enabled}
                             checked={conf.manager.cashDrawer.allowAccess}
                             onChange={checked => {
-                              conf.manager.cashDrawer.allowAccess = checked;
-                              setConf(conf);
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  cashDrawer: {
+                                    ...conf.manager.cashDrawer,
+                                    allowAccess: checked
+                                  }
+                                }
+                              });
                             }}
                           />
                           <div className="pl-2">Enable Cash Drawer</div>
@@ -534,8 +540,7 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.manager.cashDrawer.openOnSale}
                             onChange={checked => {
-                              conf.manager.cashDrawer.openOnSale = checked;
-                              setConf(conf);
+                              setConf({ ...conf, manager: { ...conf.manager, cashDrawer: { ...conf.manager.cashDrawer, openOnSale: checked } } });
                             }}
                           />
                           <div className="pl-2">Open Drawer On Sale</div>
@@ -545,8 +550,7 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.manager.printOnSale}
                             onChange={checked => {
-                              conf.manager.printOnSale = checked;
-                              setConf(conf);
+                              setConf({ ...conf, manager: { ...conf.manager, printOnSale: checked } });
                             }}
                           />
                           <div className="pl-2">Print receipt on Sale</div>
@@ -563,8 +567,16 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.manager.payment.giftCards}
                             onChange={checked => {
-                              conf.manager.payment.giftCards = checked;
-                              setConf(conf);
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  payment: {
+                                    ...conf.manager.payment,
+                                    giftCards: checked
+                                  }
+                                }
+                              });
                             }}
                           />
                           <div className="pl-2">Enable Gift Cards</div>
@@ -574,8 +586,16 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.manager.payment.loyaltyCards}
                             onChange={checked => {
-                              conf.manager.payment.loyaltyCards = checked;
-                              setConf(conf);
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  payment: {
+                                    ...conf.manager.payment,
+                                    loyaltyCards: checked
+                                  }
+                                }
+                              });
                             }}
                           />
                           <div className="pl-2">Use Loyalty Cards</div>
@@ -585,8 +605,16 @@ const Settings: React.FC<Props> = (props: Props) => {
                             {...SwitchProps}
                             checked={conf.manager.payment.USDollar}
                             onChange={checked => {
-                              conf.manager.payment.USDollar = checked;
-                              setConf(conf);
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  payment: {
+                                    ...conf.manager.payment,
+                                    USDollar: checked
+                                  }
+                                }
+                              });
                             }}
                           />
                           <div className="pl-2">Accept US Dollars</div>
@@ -597,9 +625,9 @@ const Settings: React.FC<Props> = (props: Props) => {
                 </div>
                 <div className="p-4 text-right">
                   <button className="btn btn-lg shadow-tight btn-success" onClick={() => {
-                    setConf(conf);
-                    saveSettings(conf);
-                    context.setConf(conf);
+                    saveSettings(conf)
+                      .then(() => context.setConf(conf))
+                      .catch(err => console.error(err));
                   }}>
                     Save All
                   </button>
