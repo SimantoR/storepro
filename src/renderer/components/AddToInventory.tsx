@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { EntityManager, Like } from 'typeorm';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes, faPercent } from '@fortawesome/free-solid-svg-icons';
 import DatePicker from 'react-datepicker';
 import AsyncSelect from 'react-select/async';
 import AsyncCreate from 'react-select/async-creatable';
@@ -284,12 +284,13 @@ class AddToInventory extends Component<Props, State> {
             <colgroup>
               <col width="15%" />
               <col width="15%" />
-              <col width="20%" />
-              <col width="10%" />
-              <col width="10%" />
-              <col width="10%" />
-              <col width="10%" />
-              <col width="10%" />
+              <col width="21%" />
+              <col width="9%" />
+              <col width="9%" />
+              <col width="9%" />
+              <col width="9%" />
+              <col width="9%" />
+              <col width="9%" />
             </colgroup>
             <thead>
               <tr>
@@ -299,6 +300,7 @@ class AddToInventory extends Component<Props, State> {
                 <th>Unit*</th>
                 <th>Stock</th>
                 <th>Cost*</th>
+                <th>Tax</th>
                 <th>Qty*</th>
                 <th className="text-center">Action</th>
               </tr>
@@ -430,9 +432,9 @@ class AddToInventory extends Component<Props, State> {
                 <td>
                   <select
                     defaultValue={newItem.product.unitType}
+                    value={newItem.product.unitType}
                     onChange={({ currentTarget: { value } }) => {
-                      newItem.product.unitType = parseInt(value);
-                      this.setState({ newItem: newItem });
+                      this.setState({ newItem: { ...newItem, product: { ...newItem.product, unitType: parseInt(value) } } });
                     }}
                     className="form-control"
                   >
@@ -461,6 +463,24 @@ class AddToInventory extends Component<Props, State> {
                       this.setState({ newItem: newItem });
                     }}
                   />
+                </td>
+                <td className="input-group">
+                  <div className="input-group-prepend">
+                    <div className="input-group-text">
+                      <FontAwesomeIcon icon={faPercent} />
+                    </div>
+                  </div>
+                  <input className="form-control" type="number" value={newItem.product.tax} onChange={({ currentTarget: { valueAsNumber } }) => {
+                    this.setState({
+                      newItem: {
+                        ...newItem,
+                        product: {
+                          ...newItem.product,
+                          tax: valueAsNumber
+                        }
+                      }
+                    })
+                  }} />
                 </td>
                 <td>
                   <input

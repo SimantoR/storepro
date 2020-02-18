@@ -20,13 +20,13 @@ const PaymentPanel: React.FC<IProps> = (props: IProps) => {
   );
 
   const style: React.CSSProperties = {
-    minWidth: '40%',
-    minHeight: '60%'
+    minWidth: '30%',
+    minHeight: '60%',
+    background: 'linear-gradient(.45turn, #ffffff, #f3f2f1)'
   }
 
   const onSubmit = () => {
     const value = Number.parseFloat(getDecimal(input));
-    console.log(`Value returned: ${value}`);
     props.onSubmit(value);
     props.onClose();
   };
@@ -46,8 +46,8 @@ const PaymentPanel: React.FC<IProps> = (props: IProps) => {
   }
 
   return (
-    <div className="bg-white w-auto h-auto d-flex flex-column p-2 rounded" style={style}>
-      <div className="d-flex p-2">
+    <div className="bg-white w-auto h-auto d-flex flex-column border p-4 rounded shadow" style={style}>
+      <div className="d-flex pb-2">
         {/* <h4>Payment</h4> */}
         <Button className="ml-auto btn btn-danger btn-sm btn-circle shadow-tight" onClick={props.onClose}>
           <FontAwesomeIcon icon={faTimes} />

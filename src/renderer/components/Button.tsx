@@ -2,7 +2,8 @@ import React, { Component } from 'react';
 
 interface Props extends React.HTMLAttributes<HTMLButtonElement> {
   audioSrc?: string;
-  animated: boolean;
+  animated?: boolean;
+  disabled?: boolean;
 }
 
 interface State {
@@ -10,10 +11,6 @@ interface State {
 }
 
 class Button extends Component<Props, State> {
-  static defaultProps: Partial<Props> = {
-    animated: false
-  };
-
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -24,30 +21,32 @@ class Button extends Component<Props, State> {
   }
 
   onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const { onClick } = this.props;
-    const { audio } = this.state;
-    e.currentTarget.blur();
-    if (audio) audio.play();
-    if (onClick) onClick(e);
+    if (!this.props.disabled) {
+      const { onClick } = this.props;
+      const { audio } = this.state;
+      e.currentTarget.blur();
+      if (audio) audio.play();
+      if (onClick) onClick(e);
+    }
   };
 
   render() {
     const {
-      style,
       children,
       audioSrc,
       animated,
       className,
+      disabled,
       ...buttonProps
     } = this.props;
 
     let _className = className ? `${className} ` : '';
-    let _style: React.CSSProperties = { zIndex: 1, ...style };
     if (animated) { _className += 'animated'; }
+    if (disabled) { _className += ' disabled'; }
 
     return (
-      <button {...buttonProps} style={_style} className={_className} onClick={this.onClick}>
-          {children}
+      <button {...buttonProps} className={_className} onClick={this.onClick}>
+        {children}
       </button>
     );
   }
