@@ -1,7 +1,11 @@
 import path from 'path';
 import fs from 'promise-fs';
 import { homedir } from 'os';
+import screenshot from 'screenshot-desktop';
+import jimp from 'jimp';
+import '@jimp/png';
 import 'datejs'
+import { AppConfig } from './App';
 
 export const ROOT_PATH = path.resolve(homedir(), '.storepro');
 export const LOGDIR_PATH = path.resolve(ROOT_PATH, 'logs');
@@ -39,7 +43,7 @@ export function init() {
             });
         }
     });
-    const result = Promise.all<void>([rootTask, logTask, cacheTask]);
+    Promise.all<void>([rootTask, logTask, cacheTask]);
 }
 
 export function logErr(err: Error): Promise<void> {
@@ -55,7 +59,6 @@ export function logErr(err: Error): Promise<void> {
         }
     })
 }
-
 
 export interface MenuButtonProps {
     sku: string,
@@ -81,5 +84,48 @@ export function loadMenu(): Promise<MenuButtonProps[] | undefined> {
                 .then(data => resolve(JSON.parse(data) as MenuButtonProps[]))
                 .catch(err => reject(err));
         }
+    })
+}
+
+export function takeScreenshot(outPath: string): Promise<void> {
+    return new Promise<void>(function (resolve, reject) {
+        screenshot({ format: 'png' })
+            .then(function (buffer) {
+                jimp.read(buffer).then(image => {
+                    image
+                        .quality(80)
+                        .write(outPath);
+                    resolve();
+                }).catch(err => reject(err));
+            }).catch(err => reject(err));
+    });
+}
+
+export function loadSettings(): Promise<AppConfig> {
+    return new Promise<AppConfig>(function (resolve, reject) {
+        const filePath = path.resolve(ROOT_PATH, 'conf.json');
+        if (fs.existsSync(filePath)) {
+            fs.readFile(filePath, { encoding: 'utf8' })
+                .then(confBuffer => {
+                    const _config: AppConfig = JSON.parse(confBuffer);
+                    resolve(_config);
+                })
+                .catch((err: Error) => {
+                    console.error(err.message)
+                    reject();
+                });
+        } else {
+            console.warn('No configuration found');
+            reject();
+        }
+    });
+}
+
+export function saveSettings(config: AppConfig): Promise<void> {
+    return new Promise<void>(function (resolve, reject) {
+        const filePath = path.resolve(ROOT_PATH, 'conf.json');
+          fs.writeFile(filePath, JSON.stringify(config))
+            .then(() => resolve())
+            .catch((err: Error) => reject(err));
     })
 }

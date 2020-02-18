@@ -7,6 +7,11 @@ p, h1, h2, h3, h4, h5 {
     margin-bottom: none !important;
 }
 
+td, th {
+    text-align: center;
+    vertical-align: middle;
+}
+
 .no-selection {
     user-select: none;
 }
@@ -145,7 +150,7 @@ p, h1, h2, h3, h4, h5 {
 }
 
 .border-darker {
-    border-color: #24282c !important;
+    border-color: #5e656e !important;
 }
 
 .shadow-inset {

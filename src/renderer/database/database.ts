@@ -36,7 +36,7 @@ export enum OrderStatus {
 //#endregion
 
 export function getUnitType(type: UnitType) {
-  const values = ['kg', 'lg', 'gm', 'ltr']
+  const values = ['kg', 'lg', 'gm', 'ltr'];
   return values[type];
 }
 
@@ -69,11 +69,11 @@ export class Product {
 
 @Entity('transactions')
 export class Transaction {
-  @PrimaryGeneratedColumn('rowid')
+  @PrimaryGeneratedColumn('increment')
   id: number;
 
   @Column({ type: 'real', precision: 3, nullable: false })
-  price: number
+  price: number;
 
   @Column({ type: 'real', precision: 3, nullable: false })
   paid: number;
@@ -81,11 +81,34 @@ export class Transaction {
   @Column('datetime')
   timestamp: Date;
 
-  @ManyToMany(type => Product, { cascade: false })
-  products: Product[]
+  @OneToMany(
+    type => TransactionItem,
+    item => item.transaction,
+    { cascade: true, eager: true }
+  )
+  items: TransactionItem[];
 
   @Column({ enum: PaymentMethod })
   paymentMethod: PaymentMethod;
+}
+
+@Entity('transaction_item')
+export class TransactionItem {
+  @PrimaryGeneratedColumn('increment')
+  id: number;
+
+  @ManyToOne(
+    type => Transaction,
+    transaction => transaction.items,
+    { cascade: ['update'], nullable: false }
+  )
+  transaction: Transaction;
+
+  @ManyToOne(type => Product, { cascade: ["update"], nullable: false })
+  product: Product;
+
+  @Column('int')
+  qty: number;
 }
 
 @Entity('discount')
@@ -105,7 +128,7 @@ export class Discount {
   @Column('real', { default: 0 })
   forQty: number;
 
-  @ManyToMany(type => Product, { cascade: false })
+  @ManyToOne(type => Product, { cascade: true })
   product: Product;
 }
 
@@ -139,9 +162,13 @@ export class Order {
   refNo?: string;
 
   @Column({ type: 'datetime', nullable: true })
-  deliveryDate?: Date
+  deliveryDate?: Date;
 
-  @OneToMany(type => OrderItem, orderDetails => orderDetails.order, { cascade: ['insert', 'update'] })
+  @OneToMany(
+    type => OrderItem,
+    orderDetails => orderDetails.order,
+    { cascade: ['insert', 'update'] }
+  )
   items: OrderItem[];
 
   @OneToOne(type => Supplier, { cascade: ['insert', 'update'] })
@@ -154,7 +181,10 @@ export class OrderItem {
   @PrimaryGeneratedColumn('rowid')
   id?: string;
 
-  @ManyToOne(type => Order, order => order.items)
+  @ManyToOne(
+    type => Order,
+    order => order.items
+  )
   order: Order;
 
   @ManyToMany(type => Product, { cascade: true })
@@ -180,21 +210,36 @@ export class Supplier {
   email: string;
 }
 
-export function connect(dbConnection: string, opts?: { logging?: boolean, name?: string }): Promise<EntityManager> {
+@Entity('event_logs')
+export class EventLog {
+  @PrimaryGeneratedColumn('rowid')
+  id: string;
+
+  @Column('datetime')
+  timestamp: Date;
+
+  @ManyToMany(type => Product, { cascade: true })
+  products: Product[];
+}
+
+export function connect(
+  dbConnection: string,
+  opts?: { sync?: boolean, logging?: boolean; name?: string }
+): Promise<EntityManager> {
   return new Promise(async (resolve, reject) => {
     try {
       let connection = await createConnection({
         type: 'sqlite',
         database: dbConnection,
-        synchronize: true,
+        synchronize: opts && opts.sync ? opts.sync : false,
         logging: opts && opts.logging,
-        entities: [Product, Transaction, Discount],
+        entities: [Product, Transaction, TransactionItem],
         name: opts && opts.name
       });
       let manager = connection.createEntityManager();
-      resolve(manager)
+      resolve(manager);
     } catch (err) {
-      reject(err)
+      reject(err);
     }
-  })
+  });
 }
