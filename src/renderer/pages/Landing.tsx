@@ -560,7 +560,7 @@ class Landing extends React.Component<Props, State> {
             <FontAwesomeIcon icon={faStore} /> StorePro
           </Button>
           <Button className="btn btn-sm btn-icon">
-            <small className="text-monospace">Version: 0.0.1</small>
+            <small className="text-monospace">Version: beta-1.0</small>
           </Button>
           <button className="btn btn-sm btn-icon h-100">
             Connection:{' '}

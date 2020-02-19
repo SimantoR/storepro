@@ -172,7 +172,7 @@ class AddToInventory extends Component<Props, State> {
         })
         .then(products => {
           const filtered = products.map(item => ({
-            label: `${item.name}`,
+            label: item.name,
             value: item
           }));
           cb(filtered);
