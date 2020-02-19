@@ -4,16 +4,10 @@ import Sys from 'systeminformation';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
 import requireStatic from '../requireStatic.js';
 import Scrollbars from 'react-custom-scrollbars';
+import AddToMenu from '../components/AddToMenu';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { logErr, MenuButtonProps, loadMenu } from '../system';
-import {
-  Product,
-  Discount,
-  Transaction,
-  PaymentMethod,
-  TransactionItem
-} from '../database/database';
-import { EntityManager, LessThan, MoreThan, DeepPartial } from 'typeorm';
+import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../system';
+import { EntityManager, LessThan, MoreThan } from 'typeorm';
 import { getPrinter } from 'printer';
 import { printEndOfDay } from '../tools/receipt';
 // @ts-ignore
@@ -24,6 +18,13 @@ import 'datejs';
 import 'linqify';
 import '../resources/bootstrap.min.css';
 import '../resources/bootstrap_x.css';
+import {
+  Product,
+  Discount,
+  Transaction,
+  PaymentMethod,
+  TransactionItem
+} from '../database/database';
 import {
   faCogs,
   faTimes,
@@ -115,7 +116,8 @@ function getBatteryStatus(): Promise<IconDefinition> {
 }
 
 class Landing extends React.Component<Props, State> {
-  mainInputRef: React.RefObject<HTMLInputElement>;
+  private mainInputRef: React.RefObject<HTMLInputElement>;
+  private intervals: NodeJS.Timeout[] = []
 
   constructor(props: Props) {
     super(props);
@@ -131,10 +133,7 @@ class Landing extends React.Component<Props, State> {
   }
 
   componentDidMount() {
-    this.props.dbManager.find(Transaction)
-      .then(transactions => console.log(transactions));
-    
-    console.info(printEndOfDay(this.props.dbManager));
+    console.log(printEndOfDay(this.props.dbManager));
     loadMenu()
       .then(menu => {
         this.setState({ menu: menu });
@@ -152,17 +151,18 @@ class Landing extends React.Component<Props, State> {
       })
       .catch((err: Error) => logErr(err));
 
-    setInterval(() => {
+    const id = setInterval(() => {
       getBatteryStatus()
         .then(icon => {
           this.setState({ batteryStatus: <FontAwesomeIcon icon={icon} /> });
         })
         .catch((err: Error) => logErr(err));
     }, 30 * 1000);
+  }
 
-    // this.props.dbManager.findOne(Transaction, {
-    //   where: { id: 1 }
-    // }).then(x => console.log(x));
+  componentWillUnmount() {
+    this.intervals.forEach(timeout => clearInterval(timeout));
+    this.intervals = [];
   }
 
   /** Add product to card */
@@ -197,7 +197,10 @@ class Landing extends React.Component<Props, State> {
   }: React.ChangeEvent<HTMLInputElement>) => {
     const { items, multiplier } = this.state;
     const { dbManager } = this.props;
-    if (!value) return;
+    if (!value) {
+      this.setState({ skuInput: '' });
+      return;
+    }
     dbManager
       .findOneOrFail(Product, {
         where: [{ sku: value }, { name: value }]
@@ -208,23 +211,6 @@ class Landing extends React.Component<Props, State> {
             product: product,
             qty: multiplier ?? 1
           });
-          // dbManager
-          //   .find(Discount, {
-          //     where: {
-          //       product: product,
-          //       start: LessThan(new Date()),
-          //       end: MoreThan(new Date())
-          //     }
-          //   })
-          //   .then(discounts => {
-          //     if (discounts.length !== 0) {
-          //       return discounts.map(_discount => ({
-          //         sku: product.sku,
-          //         discount: _discount.dollarOff,
-          //         qty: _discount.forQty
-          //       }));
-          //     }
-          //   });
         }
         this.setState({ skuInput: '', multiplier: undefined });
       })
@@ -275,8 +261,11 @@ class Landing extends React.Component<Props, State> {
             });
 
             database.save(TransactionItem, transactionItems)
-            .then(() => this.setState({ paid: value }))
-            .catch(err => console.log(err))
+              .then(() => {
+                this.setState({ paid: value });
+                this.printReceipt(this.formatReceipt(result.id));
+              })
+              .catch(err => console.log(err))
           })
           .catch(err => console.log(err));
 
@@ -301,6 +290,27 @@ class Landing extends React.Component<Props, State> {
       )
     });
   };
+
+  addToMenu = () => {
+    const { menu } = this.state;
+
+    const onAdd = (props: MenuButtonProps) => {
+      if (menu) {
+        menu.push(props);
+        saveMenu(menu);
+      }
+    }
+
+    this.setState({
+      hoverElement: (
+        <AddToMenu
+          database={this.props.dbManager}
+          onAdd={onAdd}
+          onClose={() => this.setState({ hoverElement: undefined })}
+        />
+      )
+    })
+  }
 
   checkConnection = () => {
     return new Promise<void>(() => {
@@ -550,7 +560,7 @@ class Landing extends React.Component<Props, State> {
             <FontAwesomeIcon icon={faStore} /> StorePro
           </Button>
           <Button className="btn btn-sm btn-icon">
-            <small className="text-monospace">Version: 0.0.3</small>
+            <small className="text-monospace">Version: 0.0.1</small>
           </Button>
           <button className="btn btn-sm btn-icon h-100">
             Connection:{' '}
@@ -614,7 +624,7 @@ class Landing extends React.Component<Props, State> {
                         </Button>
                       );
                     })}
-                  <button className="shadow-tight btn btn-success p-3 m-2">
+                  <button className="shadow-tight btn btn-success p-3 m-2" onClick={this.addToMenu}>
                     <img
                       src="https://cdn.pixabay.com/photo/2012/04/02/16/07/plus-24844_960_720.png"
                       alt="add_item"
