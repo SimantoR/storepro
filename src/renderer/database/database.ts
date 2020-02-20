@@ -78,7 +78,7 @@ export class Transaction {
   @Column({ type: 'real', precision: 3, nullable: false })
   paid: number;
 
-  @Column('datetime')
+  @Column({ type: 'datetime' })
   timestamp: Date;
 
   @OneToMany(
@@ -100,11 +100,11 @@ export class TransactionItem {
   @ManyToOne(
     type => Transaction,
     transaction => transaction.items,
-    { cascade: ['update'], nullable: false }
+    { cascade: ['update'] }
   )
   transaction: Transaction;
 
-  @ManyToOne(type => Product, { cascade: ["update"], nullable: false })
+  @ManyToOne(type => Product, { cascade: ['update'], nullable: true })
   product: Product;
 
   @Column('int')
@@ -224,7 +224,7 @@ export class EventLog {
 
 export function connect(
   dbConnection: string,
-  opts?: { sync?: boolean, logging?: boolean; name?: string }
+  opts?: { sync?: boolean; logging?: boolean; name?: string }
 ): Promise<EntityManager> {
   return new Promise(async (resolve, reject) => {
     try {

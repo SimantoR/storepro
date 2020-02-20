@@ -71,7 +71,7 @@ export function saveMenu(menu: MenuButtonProps[]): Promise<void> {
         fs.writeFile(CONF_PATH, menu, { encoding: 'utf8', flag: 'w+' })
             .then(() => resolve())
             .catch(err => reject(err));
-    })
+    });
 }
 
 export function loadMenu(): Promise<MenuButtonProps[] | undefined> {

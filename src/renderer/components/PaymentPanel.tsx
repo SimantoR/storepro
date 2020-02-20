@@ -71,9 +71,14 @@ const PaymentPanel: React.FC<IProps> = (props: IProps) => {
           }
         }}
       />
-      <Button className="btn btn-lg w-100 btn-success shadow-tight my-2" onClick={onSubmit}>
-        Pay
-      </Button>
+      <div className="d-flex w-100">
+        <Button className="flex-grow-1 btn btn-lg btn-success shadow-tight my-2" onClick={onSubmit}>
+          Debit
+        </Button>
+        <Button className="flex-grow-1 btn btn-lg btn-success shadow-tight my-2" onClick={onSubmit}>
+          Credit
+        </Button>
+      </div>
     </div>
   )
 }
