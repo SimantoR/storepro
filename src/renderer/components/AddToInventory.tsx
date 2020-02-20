@@ -465,22 +465,27 @@ class AddToInventory extends Component<Props, State> {
                   />
                 </td>
                 <td className="input-group">
-                  <div className="input-group-prepend">
+                  {/* <div className="input-group-prepend">
                     <div className="input-group-text">
                       <FontAwesomeIcon icon={faPercent} />
                     </div>
-                  </div>
-                  <input className="form-control" type="number" value={newItem.product.tax} onChange={({ currentTarget: { valueAsNumber } }) => {
-                    this.setState({
-                      newItem: {
-                        ...newItem,
-                        product: {
-                          ...newItem.product,
-                          tax: valueAsNumber
+                  </div> */}
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={newItem.product.tax}
+                    onChange={({ currentTarget: { valueAsNumber } }) => {
+                      this.setState({
+                        newItem: {
+                          ...newItem,
+                          product: {
+                            ...newItem.product,
+                            tax: valueAsNumber
+                          }
                         }
-                      }
-                    })
-                  }} />
+                      })
+                    }}
+                  />
                 </td>
                 <td>
                   <input

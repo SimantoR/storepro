@@ -2,7 +2,7 @@ import { Product, Transaction } from '../database/database';
 import { EntityManager, Between } from 'typeorm';
 import receipt from 'receipt';
 import { Dictionary } from 'linqify';
-import '../../@types/Date';
+import '../../@types/extensions';
 import 'linqify';
 import 'datejs';
 
@@ -102,9 +102,7 @@ function formatReceipt(
 export function printEndOfDay(database?: EntityManager): string {
   if (database) {
     const upperLimit = Date.today().toStandardFormat();
-    const lowerLimit = Date.today()
-      .addDays(1)
-      .toStandardFormat();
+    const lowerLimit = Date.today().addDays(1).toStandardFormat();
 
     console.log(`Upperlimit: ${upperLimit}, Lowerlimit: ${lowerLimit}`);
 
@@ -115,7 +113,11 @@ export function printEndOfDay(database?: EntityManager): string {
         }
       })
       .then(transactions => {
-        if (transactions) {
+        if (transactions.length === 0) {
+          console.log('No transactions found');
+        }
+        else {
+          console.log(transactions);
           const productCount = new Dictionary<Product, number>();
           transactions.map(async (t: Transaction) => {
             if (!t.items) {

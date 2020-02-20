@@ -19,7 +19,7 @@ export interface AppConfig {
     sleepAfter?: number; // seconds
     keyboard: boolean;
     sound: boolean;
-  },
+  };
   manager: {
     cashDrawer: {
       allowAccess: boolean;
@@ -33,11 +33,11 @@ export interface AppConfig {
     allowRefunds: boolean;
     allowVoids: boolean;
     printOnSale: boolean;
-  },
+  };
   sync: {
     syncInterval: number; // minutes
     encrypt: boolean; // takes paid subscription
-  }
+  };
 }
 
 interface State {
@@ -61,7 +61,7 @@ const defaultConf: AppConfig = {
   manager: {
     cashDrawer: {
       allowAccess: false,
-      openOnSale: true,
+      openOnSale: true
     },
     payment: {
       giftCards: false,
@@ -76,10 +76,10 @@ const defaultConf: AppConfig = {
     encrypt: true,
     syncInterval: 60
   }
-}
+};
 
 export const AppContext = React.createContext<AppConfigContext>({
-  setConf: (conf: AppConfig) => { },
+  setConf: (conf: AppConfig) => {},
   conf: defaultConf
 });
 
@@ -127,11 +127,14 @@ class App extends React.Component<any, State> {
     });
 
     // Wait for database and printer to connect
-    Promise.all<ThermalPrinter, EntityManager, AppConfig>([printerTask, dbTask, loadSettings()])
+    Promise.all<ThermalPrinter, EntityManager, AppConfig>([
+      printerTask,
+      dbTask,
+      loadSettings()
+    ])
       .then(([printer, db, conf]) => {
         const win = remote.getCurrentWindow();
-        if (!win.isFocused())
-          win.show();
+        if (!win.isFocused()) win.show();
 
         this.setState({
           printer: printer,
@@ -147,7 +150,7 @@ class App extends React.Component<any, State> {
 
   setConf = (conf: AppConfig) => {
     this.setState({ appConfig: conf });
-  }
+  };
 
   render() {
     try {
@@ -161,7 +164,9 @@ class App extends React.Component<any, State> {
       }
 
       return (
-        <AppContext.Provider value={{ setConf: this.setConf, conf: this.state.appConfig }} >
+        <AppContext.Provider
+          value={{ setConf: this.setConf, conf: this.state.appConfig }}
+        >
           <Switch>
             <Route exact path="/">
               <Landing dbManager={dbManager} printer={printer} />

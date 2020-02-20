@@ -1,9 +1,10 @@
-const merge = require('webpack-merge')
+const merge = require('webpack-merge');
 
-module.exports = function (config) {
+module.exports = function(config) {
   config = merge.smart(config, {
     module: {
-      rules: [{
+      rules: [
+        {
           test: /\.jsx?$/,
           include: /node_modules/,
           use: ['react-hot-loader/webpack']
@@ -14,7 +15,7 @@ module.exports = function (config) {
           use: ['css-loader']
         },
         {
-          test: /\.tsx?$/,
+          test: [/\.tsx?$/],
           exclude: /node_modules/,
           use: 'ts-loader'
         },
@@ -33,8 +34,11 @@ module.exports = function (config) {
           loader: 'json-loader'
         }
       ]
+    },
+    output: {
+      globalObject: 'this'
     }
-  })
+  });
 
-  return config
-}
+  return config;
+};

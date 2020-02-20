@@ -58,7 +58,6 @@ const AddToMenu: React.FC<IProps> = (props: IProps) => {
           label: item.name,
           value: item.sku
         }));
-        debugger;
         cb(filtered);
       }
     })

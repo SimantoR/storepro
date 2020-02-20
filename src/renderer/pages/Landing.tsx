@@ -1,23 +1,24 @@
 import React, { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import Sys from 'systeminformation';
-import { printer as ThermalPrinter } from 'node-thermal-printer';
-import requireStatic from '../requireStatic.js';
-import Scrollbars from 'react-custom-scrollbars';
-import AddToMenu from '../components/AddToMenu';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../system';
-import { EntityManager, LessThan, MoreThan } from 'typeorm';
-import { getPrinter } from 'printer';
-import { printEndOfDay } from '../tools/receipt';
 // @ts-ignore
 import receipt from 'receipt';
+import { round } from 'mathjs';
+import Sys from 'systeminformation';
+import { getPrinter } from 'printer';
 import Button from '../components/Button';
+import requireStatic from '../requireStatic.js';
+import AddToMenu from '../components/AddToMenu';
+import Scrollbars from 'react-custom-scrollbars';
+import { printEndOfDay } from '../tools/receipt';
 import PaymentPanel from '../components/PaymentPanel';
-import 'datejs';
-import 'linqify';
+import { EntityManager, LessThan, MoreThan } from 'typeorm';
+import { printer as ThermalPrinter } from 'node-thermal-printer';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../system';
 import '../resources/bootstrap.min.css';
 import '../resources/bootstrap_x.css';
+import 'datejs';
+import 'linqify';
 import {
   Product,
   Discount,
@@ -60,7 +61,7 @@ interface Props {
   printer: ThermalPrinter;
 }
 
-interface State {
+interface IState {
   items: Item[];
   connStatus: boolean;
   multiplier?: number;
@@ -79,11 +80,6 @@ interface Item {
 
 const greenDot = requireStatic('green_dot.webp');
 const redDot = requireStatic('red_dot.webp');
-
-function round_to_precision(x: number, precision?: number) {
-  let y = x + (precision === undefined ? 0.5 : precision / 2);
-  return y - (y % (precision === undefined ? 1 : precision));
-}
 
 function getBatteryStatus(): Promise<IconDefinition> {
   return new Promise<IconDefinition>((resolve, reject) => {
@@ -115,9 +111,9 @@ function getBatteryStatus(): Promise<IconDefinition> {
   });
 }
 
-class Landing extends React.Component<Props, State> {
+class Landing extends React.Component<Props, IState> {
   private mainInputRef: React.RefObject<HTMLInputElement>;
-  private intervals: NodeJS.Timeout[] = []
+  private intervals: NodeJS.Timeout[] = [];
 
   constructor(props: Props) {
     super(props);
@@ -227,20 +223,23 @@ class Landing extends React.Component<Props, State> {
     const closePaymentWin = () => this.setState({ hoverElement: undefined });
 
     const onSubmit = async (value: number) => {
-      let newState: Partial<State> = { paid: value };
+      let newState: Partial<IState> = { paid: value };
 
-      let subTotal = items
-        ? items.Sum(({ product, qty }) => product.costPrice * qty)
-        : 0;
-      let hst_gst = subTotal * 0.15;
-      let total = round_to_precision(subTotal + hst_gst - (value || 0), 2);
+      // Subtotal using costprice * qty of each item
+      let subTotal = items ? items.Sum(x => x.product.costPrice * x.qty) : 0;
+
+      // tax = total * (tax of each item * cost price of each item)
+      let hst_gst = round(items.Sum(x => x.product.tax * x.product.costPrice));
+      let total = round(subTotal + hst_gst - (value || 0), 2);
+
+      debugger;
 
       if (total <= 0) {
         // create transaction
         let transaction = database.create(Transaction, {
           paid: value,
-          price: total,
-          paymentMethod: PaymentMethod.credit,
+          price: subTotal + hst_gst,
+          paymentMethod: PaymentMethod.debit,
           timestamp: new Date()
         });
 
@@ -254,29 +253,22 @@ class Landing extends React.Component<Props, State> {
 
         // transaction.items = transactionItems;
 
-        database.save(Transaction, transaction)
+        database
+          .save(Transaction, transaction)
           .then(result => {
             transactionItems.forEach(t => {
-              t.transaction = result
+              t.transaction = result;
             });
 
-            database.save(TransactionItem, transactionItems)
+            database
+              .save(TransactionItem, transactionItems)
               .then(() => {
                 this.setState({ paid: value });
                 this.printReceipt(this.formatReceipt(result.id));
               })
-              .catch(err => console.log(err))
+              .catch(err => console.log(err));
           })
           .catch(err => console.log(err));
-
-        // database.save(TransactionItem, transactionItems)
-        //   .then(result => {
-        //     transaction.items = result;
-        //     database.save(Transaction, transaction)
-        //       .then(() => this.setState({ paid: value }))
-        //       .catch(err => console.log(err))
-        //   })
-        //   .catch(err => console.log(err));
       }
     };
 
@@ -299,7 +291,7 @@ class Landing extends React.Component<Props, State> {
         menu.push(props);
         saveMenu(menu);
       }
-    }
+    };
 
     this.setState({
       hoverElement: (
@@ -309,8 +301,8 @@ class Landing extends React.Component<Props, State> {
           onClose={() => this.setState({ hoverElement: undefined })}
         />
       )
-    })
-  }
+    });
+  };
 
   checkConnection = () => {
     return new Promise<void>(() => {
@@ -529,7 +521,8 @@ class Landing extends React.Component<Props, State> {
     let subTotal = items
       ? items.Sum(item => item.product.costPrice * item.qty)
       : 0;
-    let hst_gst = subTotal * 0.15;
+    // tax = total * (tax of each item * cost price of each item)
+    let hst_gst = items.Sum(x => x.product.tax * x.product.costPrice);
     let total = subTotal + hst_gst - (paid || 0);
 
     return (
@@ -574,7 +567,10 @@ class Landing extends React.Component<Props, State> {
         <div className="flex-grow-1 d-flex h-100 w-100">
           <div
             className="d-flex flex-column h-100 border-right"
-            style={{ width: '55vw' }}
+            style={{
+              width: '55vw'
+              // background: `center / contain no-repeat url(${requireStatic("logo.png")})`
+            }}
           >
             <div className="flex-grow-1 py-2 w-100">
               <div className="d-flex justify-content-around w-100 py-4">
@@ -624,7 +620,10 @@ class Landing extends React.Component<Props, State> {
                         </Button>
                       );
                     })}
-                  <button className="shadow-tight btn btn-success p-3 m-2" onClick={this.addToMenu}>
+                  <button
+                    className="shadow-tight btn btn-success p-3 m-2"
+                    onClick={this.addToMenu}
+                  >
                     <img
                       src="https://cdn.pixabay.com/photo/2012/04/02/16/07/plus-24844_960_720.png"
                       alt="add_item"
