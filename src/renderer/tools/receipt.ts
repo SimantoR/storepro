@@ -1,4 +1,8 @@
-import { Product, Transaction } from '../database/database';
+import {
+  Product,
+  Transaction,
+  PaymentMethod
+} from '../database/database';
 import { EntityManager, Between } from 'typeorm';
 import receipt from 'receipt';
 import { Dictionary } from 'linqify';
@@ -99,56 +103,80 @@ function formatReceipt(
  * Print end of the day and return data
  * @param database Database to draw data from
  */
-export function printEndOfDay(database?: EntityManager): string {
-  if (database) {
-    const upperLimit = Date.today().toStandardFormat();
-    const lowerLimit = Date.today().addDays(1).toStandardFormat();
+export async function generateEOD(
+  database: EntityManager,
+  date?: Date
+): Promise<string> {
+  const productCount = new Dictionary<Product, number>();
+  const transactionTime = new Dictionary<string, number>();
+  const transactions: Transaction[] = [];
+  let debit: number = 0;
+  let credit: number = 0;
+  let cash: number = 0;
 
-    console.log(`Upperlimit: ${upperLimit}, Lowerlimit: ${lowerLimit}`);
+  const getTotal = () => debit + credit + cash;
 
-    database
-      .find<Transaction>(Transaction, {
-        where: {
-          timestamp: Between(upperLimit, lowerLimit)
-        }
-      })
-      .then(transactions => {
-        if (transactions.length === 0) {
-          console.log('No transactions found');
-        }
-        else {
-          console.log(transactions);
-          const productCount = new Dictionary<Product, number>();
-          transactions.map(async (t: Transaction) => {
-            if (!t.items) {
-              console.log('No Product found');
-            } else {
-              let _items = await t.items
-              _items.map(({ product, qty }) => {
+  const upperLimit = Date.today()
+    .addDays(1)
+    .toDatabaseString();
+  const lowerLimit = Date.today().toDatabaseString();
+
+  // console.log(`Upperlimit: ${upperLimit}, Lowerlimit: ${lowerLimit}`);
+
+  // spin a promise to find transactions
+  const dbTask = database.find<Transaction>(Transaction, {
+    where: {
+      timestamp: Between(lowerLimit, upperLimit)
+    }
+  });
+
+  dbTask
+    .then(_transactions => {
+      // calculate printable things
+      if (_transactions.length !== 0) {
+        transactions.push(..._transactions);
+
+        debit = _transactions
+          .Where(t => t.paymentMethod === PaymentMethod.debit)
+          .Sum(t => t.price);
+        credit = _transactions
+          .Where(t => t.paymentMethod === PaymentMethod.credit)
+          .Sum(t => t.price);
+        cash = _transactions
+          .Where(t => t.paymentMethod === PaymentMethod.cash)
+          .Sum(t => t.price);
+
+        _transactions.map((t: Transaction) => {
+          const time =
+            t.timestamp.getHours() > 12
+              ? `${t.timestamp.getHours() - 12} pm`
+              : `${t.timestamp.getHours()} am`;
+          if (transactionTime.ContainsKey(time)) {
+            transactionTime.Set(time, transactionTime.Get(time) + 1);
+          } else {
+            transactionTime.Add(time, 1);
+          }
+          if (!t.items) {
+            console.log('No Product found');
+          } else {
+            let _items = t.items;
+            _items.map(({ product, qty }) => {
+              if (product) {
                 if (productCount.ContainsKey(product)) {
                   productCount.Set(product, productCount.Get(product) + qty);
                 } else {
                   productCount.Add(product, qty);
                 }
-              });
-            }
-          });
-          console.log(
-            `Total Products: ${productCount.Keys.Count()}, Total Items: ${productCount.Sum(
-              x => x.Value
-            )}`
-          );
-        }
-      })
-      .catch(err => console.error(err));
-  }
+              }
+            });
+          }
+        });
+      }
+    })
+    .catch(err => console.error(err));
 
-  const dataset = [
-    { name: 'Gadorade', value: 32.4 },
-    { name: 'Powarade', value: 32.4 },
-    { name: 'Coke 2L', value: 32.4 },
-    { name: 'Humpty Dumpty', value: 32.4 }
-  ];
+  // wait for db to finish query
+  await dbTask;
 
   function alignStr({
     name,
@@ -164,43 +192,47 @@ export function printEndOfDay(database?: EntityManager): string {
       .padEnd(receipt.config.width - value.length, sep ?? ' ')
       .concat(value);
   }
+
   const outputStr = receipt.create([
     {
       type: 'text',
       value: [
         'TASTE EAST',
         '62 Allandale Rd',
-        'taste.east@hotmail.com',
+        '(+1) 709-579-7366',
         'www.tasteeastnl.ca'
       ],
       align: 'center'
+    },
+    {
+      type: 'properties',
+      lines: [{ name: 'Date', value: Date.today().toDateString() }]
     },
     { type: 'empty' },
     { type: 'text', value: 'Daily Sales', align: 'center' },
     {
       type: 'text',
       value: [
-        alignStr({ name: 'Credit', value: '$ 924.44' }),
-        alignStr({ name: 'Debit', value: '$ 924.44' }),
-        alignStr({ name: 'Cash', value: '$ 924.44' })
+        alignStr({ name: 'Credit', value: '$'.concat(credit.toFixed(2)) }),
+        alignStr({ name: 'Debit', value: '$'.concat(debit.toFixed(2)) }),
+        alignStr({ name: 'Cash', value: '$'.concat(cash.toFixed(2)) })
       ]
     },
     { type: 'text', value: ''.padEnd(receipt.config.width, '-') },
     {
       type: 'text',
-      value: alignStr({ name: 'Total Sales', value: '$ 924.44' })
+      value: alignStr({
+        name: 'Total Sales',
+        value: '$'.concat(getTotal().toFixed(2))
+      })
     },
     { type: 'empty' },
     { type: 'text', value: 'Product Information', align: 'center' },
     {
       type: 'text',
-      value: dataset.map(data => {
-        return alignStr({
-          name: data.name,
-          value: '$ '.concat(data.value.toFixed(2))
-        });
-        // let value = data.value.toFixed(2);
-        // return data.name.concat(':').padEnd(receipt.config.width - value.length - 1, '-').concat('$', value);
+      value: productCount.ToArray().map(({ Key, Value }) => {
+        const cost = Key.costPrice * Value;
+        return alignStr({ name: Key.name, value: '$'.concat(cost.toFixed(2)) });
       })
     },
     { type: 'empty' },
@@ -209,19 +241,11 @@ export function printEndOfDay(database?: EntityManager): string {
     { type: 'text', value: ''.padEnd(receipt.config.width, '-') },
     {
       type: 'text',
-      value: [
-        alignStr({ name: '10am', value: '2' }),
-        alignStr({ name: '11am', value: '2' }),
-        alignStr({ name: '12pm', value: '2' }),
-        alignStr({ name: '1pm', value: '2' }),
-        alignStr({ name: '2pm', value: '2' }),
-        alignStr({ name: '3pm', value: '2' }),
-        alignStr({ name: '4pm', value: '2' }),
-        alignStr({ name: '5pm', value: '2' }),
-        alignStr({ name: '6pm', value: '2' }),
-        alignStr({ name: '7pm', value: '2' }),
-        alignStr({ name: '8pm', value: '2' })
-      ]
+      value: transactionTime
+        .ToArray()
+        .map(({ Key, Value }) =>
+          alignStr({ name: Key, value: Value.toString() })
+        )
     }
   ]);
 
