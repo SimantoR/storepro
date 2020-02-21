@@ -104,7 +104,7 @@ export class TransactionItem {
   )
   transaction: Transaction;
 
-  @ManyToOne(type => Product, { cascade: ['update'], nullable: true })
+  @ManyToOne(type => Product, { cascade: ['update'], nullable: true, eager: true })
   product: Product;
 
   @Column('int')

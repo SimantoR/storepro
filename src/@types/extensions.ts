@@ -1,19 +1,19 @@
 export {};
 
-import 'datejs';
-
 declare global {
   interface Date {
-    toStandardFormat(): string;
     toDatabaseString(): string;
     toUTCDate(): string;
   }
 }
 
+<<<<<<< HEAD
 Date.prototype.toStandardFormat = function() {
   return this.toString(`yyyy-MM-dd HH:mm:ss`);
 };
 
+=======
+>>>>>>> origin/alpha
 Date.prototype.toDatabaseString = function() {
   const yyyy = this.getUTCFullYear();
   const MM = (this.getUTCMonth() + 1).toString().padStart(2, '0');

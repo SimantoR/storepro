@@ -3,6 +3,8 @@ import Button from '../components/Button';
 import DatePicker from 'react-datepicker';
 import { EntityManager, Between } from 'typeorm';
 import { Transaction } from '../database/database';
+import { printer as ThermalPrinter } from 'node-thermal-printer';
+import { generateEOD } from '../tools/receipt';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import '../../@types/extensions';
 import 'datejs';
@@ -18,6 +20,7 @@ import Scrollbars from 'react-custom-scrollbars';
 
 interface IProps {
   database: EntityManager;
+  printer: ThermalPrinter;
 }
 
 interface IState {
@@ -30,7 +33,7 @@ class Sales extends Component<IProps, IState> {
     super(props);
     this.state = {
       transactions: [],
-      activeDate: new Date()
+      activeDate: Date.today()
     };
   }
 
@@ -46,23 +49,27 @@ class Sales extends Component<IProps, IState> {
       .catch(err => console.log(err));
   }
 
+  /**
+   * Load transactions for given date
+   * @param activeDate The date parameter to search for
+   */
   loadSales = (activeDate: Date): Promise<Transaction[]> => {
     return new Promise<Transaction[]>((resolve, reject) => {
       const { database } = this.props;
 
       const upperLimit = new Date(activeDate).addDays(1);
-      const lowerLimit = new Date(activeDate).addDays(-1);
+      const lowerLimit = new Date(activeDate);
 
       upperLimit.setHours(0, 0, 0, 0);
       lowerLimit.setHours(0, 0, 0, 0);
 
-      // console.log(`Upper Limit: ${upperLimit.toUTCDate()}`);
-      // console.log(`Lower Limit: ${lowerLimit.toUTCDate()}`);
-
       database
         .find(Transaction, {
           where: {
-            timestamp: Between(lowerLimit.toUTCDate(), upperLimit.toUTCDate())
+            timestamp: Between(
+              lowerLimit.toDatabaseString(),
+              upperLimit.toDatabaseString()
+            )
           },
           order: { timestamp: 'ASC' },
           take: 10
@@ -78,8 +85,24 @@ class Sales extends Component<IProps, IState> {
     const transaction = this.state.transactions[index];
   };
 
+  printEOD = () => {
+    const { database, printer } = this.props;
+    const { activeDate } = this.state;
+
+    generateEOD(database, activeDate)
+      .then(EOD => {
+        printer.clear();
+        printer.print(EOD);
+        printer.cut();
+        printer.execute();
+        printer.clear();
+      })
+      .catch((err: Error) => console.error(err.message));
+  };
+
   render() {
     const { transactions, activeDate } = this.state;
+    const { database } = this.props;
     return (
       <div className="w-100 h-100 d-flex flex-column">
         <Scrollbars className="flex-grow-1 w-100">
@@ -155,7 +178,13 @@ class Sales extends Component<IProps, IState> {
             </tbody>
           </table>
         </Scrollbars>
-        <div className="w-100 d-flex justify-content-center align-items-center border-top py-1">
+        <div className="w-100 d-flex justify-content-center align-items-center border-top p-1">
+          <Button
+            className="mr-auto btn btn-lg btn-circle btn-red"
+            onClick={this.printEOD}
+          >
+            <FontAwesomeIcon icon={faPrint} />
+          </Button>
           <Button
             className="btn btn-circle btn-lg btn-info shadow-tight"
             onClick={() => {
