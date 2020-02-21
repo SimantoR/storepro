@@ -9,7 +9,6 @@ import Button from '../components/Button';
 import requireStatic from '../requireStatic.js';
 import AddToMenu from '../components/AddToMenu';
 import Scrollbars from 'react-custom-scrollbars';
-import { printEndOfDay } from '../tools/receipt';
 import PaymentPanel from '../components/PaymentPanel';
 import { EntityManager, LessThan, MoreThan } from 'typeorm';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
@@ -21,7 +20,6 @@ import 'datejs';
 import 'linqify';
 import {
   Product,
-  Discount,
   Transaction,
   PaymentMethod,
   TransactionItem
@@ -129,7 +127,6 @@ class Landing extends React.Component<Props, IState> {
   }
 
   componentDidMount() {
-    console.log(printEndOfDay(this.props.dbManager));
     loadMenu()
       .then(menu => {
         this.setState({ menu: menu });
@@ -718,7 +715,12 @@ class Landing extends React.Component<Props, IState> {
                 <h5 className="m-0">$ {subTotal.toFixed(2)}</h5>
               </div>
               <div className="w-100 py-2 d-flex justify-content-between align-items-center border-top">
-                <h5 className="m-0">HST/GST</h5>
+                <div className="d-flex">
+                  <h5 className="m-0">HST/GST</h5>
+                  <Button className="btn btn-sm btn-circle btn-red">
+                    <FontAwesomeIcon icon={faTimes} />
+                  </Button>
+                </div>
                 <h5 className="m-0">$ {hst_gst.toFixed(2)}</h5>
               </div>
               <div className="w-100 py-2 d-flex justify-content-between border-top">
