@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import Button from '../components/Button';
 import DatePicker from 'react-datepicker';
 import { EntityManager, Between } from 'typeorm';
-import { Transaction } from '../database/database';
+import { Purchase } from '../database/database';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
 import { generateEOD } from '../tools/receipt';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -24,7 +24,7 @@ interface IProps {
 }
 
 interface IState {
-  transactions: Transaction[];
+  transactions: Purchase[];
   activeDate: Date;
 }
 
@@ -42,7 +42,7 @@ class Sales extends Component<IProps, IState> {
 
     tasks.push(this.loadSales(this.state.activeDate));
 
-    Promise.all<Transaction[]>(tasks)
+    Promise.all<Purchase[]>(tasks)
       .then(([transactions]) => {
         this.setState({ transactions: transactions });
       })
@@ -53,8 +53,8 @@ class Sales extends Component<IProps, IState> {
    * Load transactions for given date
    * @param activeDate The date parameter to search for
    */
-  loadSales = (activeDate: Date): Promise<Transaction[]> => {
-    return new Promise<Transaction[]>((resolve, reject) => {
+  loadSales = (activeDate: Date): Promise<Purchase[]> => {
+    return new Promise<Purchase[]>((resolve, reject) => {
       const { database } = this.props;
 
       const upperLimit = new Date(activeDate).addDays(1);
@@ -64,7 +64,7 @@ class Sales extends Component<IProps, IState> {
       lowerLimit.setHours(0, 0, 0, 0);
 
       database
-        .find(Transaction, {
+        .find(Purchase, {
           where: {
             timestamp: Between(
               lowerLimit.toDatabaseString(),
@@ -111,9 +111,10 @@ class Sales extends Component<IProps, IState> {
               <col width="5%" />
               <col width="25%" />
               <col width="10%" />
+              <col width="10%" />
+              <col width="10%" />
               <col width="15%" />
-              <col width="15%" />
-              <col width="30%" />
+              <col width="25%" />
             </colgroup>
             <thead>
               <tr>
@@ -121,6 +122,7 @@ class Sales extends Component<IProps, IState> {
                 <th>Timestamp</th>
                 <th>Price</th>
                 <th>Paid Amount</th>
+                <th>HST/GST</th>
                 <th>Payment Method</th>
                 <th>Actions</th>
               </tr>
@@ -134,6 +136,7 @@ class Sales extends Component<IProps, IState> {
                   </td>
                   <td>&#36; {t.price.toFixed(2)}</td>
                   <td>&#36; {t.paid.toFixed(2)}</td>
+                  <td>&#36; {t.tax.toFixed(2)}</td>
                   <td>
                     <select
                       disabled
@@ -147,15 +150,16 @@ class Sales extends Component<IProps, IState> {
                   </td>
                   <td className="d-flex justify-content-around">
                     <Button
-                      className="btn btn-red btn-circle"
+                      className="btn btn-red btn-circle shadow-tight"
                       onClick={() => {
-                        const item = transactions.splice(i, 1);
-                        this.props.database
-                          .remove(item)
-                          .then(() =>
-                            this.setState({ transactions: transactions })
-                          )
-                          .catch(err => console.log(err));
+                        const item = transactions[i];
+                        database.remove(item)
+                          .then(() => {
+                            transactions.splice(i, 1);
+                            this.setState({
+                              transactions: Array.from(transactions)
+                            });
+                          }).catch(console.error);
                       }}
                     >
                       <FontAwesomeIcon icon={faTimes} />

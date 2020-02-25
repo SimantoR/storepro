@@ -8,7 +8,7 @@ import Scrollbars from 'react-custom-scrollbars';
 import { AppConfig, AppContext, AppConfigContext } from '../App';
 import InventoryPage from './Inventory';
 import { EntityManager } from 'typeorm';
-import { ROOT_PATH, logErr, saveSettings } from '../system';
+import { ROOT_PATH, logErr, saveSettings } from '../tools/system';
 import path from 'path';
 import * as fs from 'promise-fs';
 import AddToInventory from '../components/AddToInventory';

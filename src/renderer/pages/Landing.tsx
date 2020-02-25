@@ -13,16 +13,16 @@ import PaymentPanel from '../components/PaymentPanel';
 import { EntityManager, LessThan, MoreThan } from 'typeorm';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../system';
+import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../tools/system';
 import '../resources/bootstrap.min.css';
 import '../resources/bootstrap_x.css';
 import 'datejs';
 import 'linqify';
 import {
   Product,
-  Transaction,
+  Purchase,
   PaymentMethod,
-  TransactionItem
+  PurchaseItem
 } from '../database/database';
 import {
   faCogs,
@@ -226,39 +226,38 @@ class Landing extends React.Component<Props, IState> {
       let subTotal = items ? items.Sum(x => x.product.costPrice * x.qty) : 0;
 
       // tax = total * (tax of each item * cost price of each item)
-      let hst_gst = round(items.Sum(x => x.product.tax * x.product.costPrice));
+      let hst_gst = round(items.Sum(x => x.product.tax * x.product.costPrice), 3);
       let total = round(subTotal + hst_gst - (value || 0), 2);
 
       debugger;
 
       if (total <= 0) {
         // create transaction
-        let transaction = database.create(Transaction, {
+        let purchaseLog = database.create(Purchase, {
           paid: value,
-          price: subTotal + hst_gst,
+          price: subTotal,
+          tax: hst_gst,
           paymentMethod: PaymentMethod.debit,
           timestamp: new Date()
         });
 
         // create transaction items
-        let transactionItems = items.map(item => {
-          return database.create(TransactionItem, {
+        let purchaseItems = items.map(item => {
+          return database.create(PurchaseItem, {
             product: item.product,
             qty: item.qty
           });
         });
 
-        // transaction.items = transactionItems;
-
         database
-          .save(Transaction, transaction)
+          .save(Purchase, purchaseLog)
           .then(result => {
-            transactionItems.forEach(t => {
-              t.transaction = result;
+            purchaseItems.forEach(t => {
+              t.purchase = result;
             });
 
             database
-              .save(TransactionItem, transactionItems)
+              .save(PurchaseItem, purchaseItems)
               .then(() => {
                 this.setState({ paid: value });
                 this.printReceipt(this.formatReceipt(result.id));
@@ -662,15 +661,16 @@ class Landing extends React.Component<Props, IState> {
               >
                 <FontAwesomeIcon icon={faBackspace} />
               </Button>
-              <button
-                className="btn btn-xl btn-circle text-white shadow-tight"
+              <Link
+                to="/config"
+                className="btn btn-xl btn-circle text-white shadow-tight d-flex justify-content-center align-items-center"
                 style={{
                   textShadow: '3px 5px 3px #7b8052',
                   backgroundColor: '#c0c781'
                 }}
               >
                 <FontAwesomeIcon icon={faMoneyBill} />
-              </button>
+              </Link>
               <Button
                 disabled={total == 0}
                 className="btn btn-xl btn-circle text-white shadow-tight"

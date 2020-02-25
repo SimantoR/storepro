@@ -67,8 +67,8 @@ export class Product {
   qty: number;
 }
 
-@Entity('transactions')
-export class Transaction {
+@Entity('purchases')
+export class Purchase {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
@@ -78,31 +78,34 @@ export class Transaction {
   @Column({ type: 'real', precision: 3, nullable: false })
   paid: number;
 
+  @Column({ type: 'real', precision: 3, nullable: false, default: 0.0 })
+  tax: number;
+
   @Column({ type: 'datetime' })
   timestamp: Date;
 
   @OneToMany(
-    type => TransactionItem,
-    item => item.transaction,
+    type => PurchaseItem,
+    item => item.purchase,
     { cascade: true, eager: true }
   )
-  items: TransactionItem[];
+  items: PurchaseItem[];
 
   @Column({ enum: PaymentMethod })
   paymentMethod: PaymentMethod;
 }
 
-@Entity('transaction_item')
-export class TransactionItem {
+@Entity('purchase_items')
+export class PurchaseItem {
   @PrimaryGeneratedColumn('increment')
   id: number;
 
   @ManyToOne(
-    type => Transaction,
+    type => Purchase,
     transaction => transaction.items,
     { cascade: ['update'] }
   )
-  transaction: Transaction;
+  purchase: Purchase;
 
   @ManyToOne(type => Product, { cascade: ['update'], nullable: true, eager: true })
   product: Product;
@@ -233,7 +236,7 @@ export function connect(
         database: dbConnection,
         synchronize: opts && opts.sync ? opts.sync : false,
         logging: opts && opts.logging,
-        entities: [Product, Transaction, TransactionItem],
+        entities: [Product, Purchase, PurchaseItem],
         name: opts && opts.name
       });
       let manager = connection.createEntityManager();

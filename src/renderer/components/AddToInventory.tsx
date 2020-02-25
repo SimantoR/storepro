@@ -5,7 +5,7 @@ import { faPlus, faTimes, faPercent } from '@fortawesome/free-solid-svg-icons';
 import DatePicker from 'react-datepicker';
 import AsyncSelect from 'react-select/async';
 import AsyncCreate from 'react-select/async-creatable';
-import { logErr } from '../system';
+import { logErr } from '../tools/system';
 import Scrollbars from 'react-custom-scrollbars';
 import 'react-datepicker/dist/react-datepicker.min.css';
 import 'datejs';
@@ -106,7 +106,7 @@ class AddToInventory extends Component<Props, State> {
       return database.create(Product, { ...product, qty: (product.qty || 0) + qty });
     });
 
-    database.save<Product>(products, { transaction: false })
+    database.save<Product>(products)
       .catch((err: Error) => console.warn(err.message))
       .then(() => {
         this.setState({ newItem: { product: emptyItem, qty: 0 }, orderItems: [] });
