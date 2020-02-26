@@ -100,6 +100,20 @@ class Sales extends Component<IProps, IState> {
       .catch((err: Error) => console.error(err.message));
   };
 
+  deleteLog(i: number) {
+    const { transactions } = this.state;
+    const { database } = this.props;
+
+    const item = transactions[i];
+    database
+      .remove(item)
+      .then(() => {
+        transactions.splice(i, 1);
+        this.setState({ transactions: transactions });
+      })
+      .catch(console.error);
+  }
+
   render() {
     const { transactions, activeDate } = this.state;
     const { database } = this.props;
@@ -151,16 +165,7 @@ class Sales extends Component<IProps, IState> {
                   <td className="d-flex justify-content-around">
                     <Button
                       className="btn btn-red btn-circle shadow-tight"
-                      onClick={() => {
-                        const item = transactions[i];
-                        database.remove(item)
-                          .then(() => {
-                            transactions.splice(i, 1);
-                            this.setState({
-                              transactions: Array.from(transactions)
-                            });
-                          }).catch(console.error);
-                      }}
+                      onClick={() => this.deleteLog(i)}
                     >
                       <FontAwesomeIcon icon={faTimes} />
                     </Button>

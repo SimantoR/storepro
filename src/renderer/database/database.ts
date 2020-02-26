@@ -87,7 +87,7 @@ export class Purchase {
   @OneToMany(
     type => PurchaseItem,
     item => item.purchase,
-    { cascade: true, eager: true }
+    { onDelete: 'CASCADE', cascade: ['insert'], eager: true }
   )
   items: PurchaseItem[];
 
@@ -103,11 +103,15 @@ export class PurchaseItem {
   @ManyToOne(
     type => Purchase,
     transaction => transaction.items,
-    { cascade: ['update'] }
+    { onDelete: 'CASCADE' }
   )
   purchase: Purchase;
 
-  @ManyToOne(type => Product, { cascade: ['update'], nullable: true, eager: true })
+  @ManyToOne(type => Product, {
+    onUpdate: 'CASCADE',
+    nullable: true,
+    eager: true
+  })
   product: Product;
 
   @Column('int')
