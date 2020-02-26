@@ -109,7 +109,7 @@ export class PurchaseItem {
 
   @ManyToOne(type => Product, {
     onUpdate: 'CASCADE',
-    nullable: true,
+    onDelete: 'SET NULL',
     eager: true
   })
   product: Product;
@@ -231,14 +231,14 @@ export class EventLog {
 
 export function connect(
   dbConnection: string,
-  opts?: { sync?: boolean; logging?: boolean; name?: string }
+  opts?: { logging?: boolean; name?: string }
 ): Promise<EntityManager> {
   return new Promise(async (resolve, reject) => {
     try {
       let connection = await createConnection({
         type: 'sqlite',
         database: dbConnection,
-        synchronize: opts && opts.sync ? opts.sync : false,
+        synchronize: true,
         logging: opts && opts.logging,
         entities: [Product, Purchase, PurchaseItem],
         name: opts && opts.name
