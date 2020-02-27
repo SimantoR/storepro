@@ -6,13 +6,15 @@ import ReactLoading from 'react-loading';
 import { remote } from 'electron';
 import { connect, Product } from './database/database';
 import { EntityManager } from 'typeorm';
-import { init, ROOT_PATH, logErr, loadSettings } from './system';
+import { init, ROOT_PATH, logErr, loadSettings } from './tools/system';
 import * as fs from 'promise-fs';
+import path from 'path';
 import {
   printer as ThermalPrinter,
   types as PrinterTypes
 } from 'node-thermal-printer';
-import path from 'path';
+import './resources/daftpunk.min.css';
+import './resources/bootstrap_x.css';
 
 export interface AppConfig {
   app: {
@@ -121,7 +123,7 @@ class App extends React.Component<any, State> {
     let dbTask = new Promise<EntityManager>((resolve, reject) => {
       let dbPath = path.resolve(ROOT_PATH, 'inventory.db');
       // connect(dbPath, { sync: true })
-      connect(dbPath, { sync: !fs.existsSync(dbPath) })
+      connect(dbPath)
         .then(resolve)
         .catch(reject);
     });
@@ -169,7 +171,7 @@ class App extends React.Component<any, State> {
         >
           <Switch>
             <Route exact path="/">
-              <Landing dbManager={dbManager} printer={printer} />
+              <Landing database={dbManager} printer={printer} />
             </Route>
             <Route path="/settings">
               <Settings dbManager={dbManager} printer={printer} />

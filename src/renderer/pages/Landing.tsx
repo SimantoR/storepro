@@ -14,8 +14,6 @@ import { EntityManager, LessThan, MoreThan } from 'typeorm';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { logErr, MenuButtonProps, loadMenu, saveMenu } from '../tools/system';
-import '../resources/bootstrap.min.css';
-import '../resources/bootstrap_x.css';
 import 'datejs';
 import 'linqify';
 import {
@@ -55,7 +53,7 @@ const httpProp = {
 };
 
 interface Props {
-  dbManager: EntityManager;
+  database: EntityManager;
   printer: ThermalPrinter;
 }
 
@@ -160,7 +158,7 @@ class Landing extends React.Component<Props, IState> {
 
   /** Add product to card */
   addProduct = async (sku: string) => {
-    const { dbManager: database } = this.props;
+    const { database } = this.props;
     const { items, multiplier } = this.state;
 
     // let itemStore = items ?? [];
@@ -189,12 +187,12 @@ class Landing extends React.Component<Props, IState> {
     currentTarget: { value }
   }: React.ChangeEvent<HTMLInputElement>) => {
     const { items, multiplier } = this.state;
-    const { dbManager } = this.props;
+    const { database } = this.props;
     if (!value) {
       this.setState({ skuInput: '' });
       return;
     }
-    dbManager
+    database
       .findOneOrFail(Product, {
         where: [{ sku: value }, { name: value }]
       })
@@ -215,7 +213,7 @@ class Landing extends React.Component<Props, IState> {
 
   showPayment = () => {
     const { items } = this.state;
-    const { dbManager: database } = this.props;
+    const { database } = this.props;
 
     const closePaymentWin = () => this.setState({ hoverElement: undefined });
 
@@ -292,7 +290,7 @@ class Landing extends React.Component<Props, IState> {
     this.setState({
       hoverElement: (
         <AddToMenu
-          database={this.props.dbManager}
+          database={this.props.database}
           onAdd={onAdd}
           onClose={() => this.setState({ hoverElement: undefined })}
         />
@@ -501,8 +499,6 @@ class Landing extends React.Component<Props, IState> {
       paid,
       hoverElement
     } = this.state;
-
-    const { dbManager: database } = this.props;
 
     let btnStyle: CSSProperties = { width: '55px' };
     let borderedBtn: CSSProperties = { borderBottom: '10px solid orange' };

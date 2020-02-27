@@ -2,7 +2,7 @@ import React from 'react';
 import Button from './Button';
 import { remote } from 'electron';
 import { EntityManager, Like } from 'typeorm';
-import { MenuButtonProps } from '../system';
+import { MenuButtonProps } from '../tools/system';
 import AsyncSelect from 'react-select/async';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';

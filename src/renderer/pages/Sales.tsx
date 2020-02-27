@@ -120,7 +120,7 @@ class Sales extends Component<IProps, IState> {
     return (
       <div className="w-100 h-100 d-flex flex-column">
         <Scrollbars className="flex-grow-1 w-100">
-          <table className="table table-striped table-borderless text-center align-content-center">
+          <table className="table table-striped table-borderless font-kulim">
             <colgroup>
               <col width="5%" />
               <col width="25%" />
@@ -130,7 +130,7 @@ class Sales extends Component<IProps, IState> {
               <col width="15%" />
               <col width="25%" />
             </colgroup>
-            <thead>
+            <thead className="shadow">
               <tr>
                 <th>ID</th>
                 <th>Timestamp</th>
@@ -145,9 +145,7 @@ class Sales extends Component<IProps, IState> {
               {transactions.map((t, i) => (
                 <tr key={i}>
                   <td>{t.id}</td>
-                  <td className="text-monospace">
-                    {t.timestamp.toString('MMM dd, yyyy hh:mm:ss tt')}
-                  </td>
+                  <td>{t.timestamp.toString('MMM dd, yyyy hh:mm:ss tt')}</td>
                   <td>&#36; {t.price.toFixed(2)}</td>
                   <td>&#36; {t.paid.toFixed(2)}</td>
                   <td>&#36; {t.tax.toFixed(2)}</td>

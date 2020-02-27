@@ -1,6 +1,6 @@
 {
   "name": "store_pro",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "main": "./src/main/index.js",
   "author": {
     "name": "Simanto Rahman",
@@ -14,6 +14,9 @@
     "dist": "npm run compile && electron-builder build -m dmg",
     "dist:dir": "npm dist --dir -c.compression=store -c.mac.identity=null",
     "rebuild": "electron-rebuild"
+  },
+  "prettier": {
+    "trailingComma": "none"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.7.7",
@@ -29,17 +32,12 @@
     "@types/react-dom": "^16.9.4",
     "@types/react-router-dom": "^5.1.3",
     "@types/react-select": "^3.0.10",
-    "@types/sharp": "^0.24.0",
     "@types/sqlite3": "^3.1.6",
-    "bootstrap": "^4.4.1",
     "csv-stringify": "^5.3.6",
     "custom-electron-titlebar": "^3.2.0",
     "datejs": "^1.0.0-rc3",
     "dotenv": "^8.0.0",
-    "es6-promise": "^4.2.8",
     "eslint-plugin-react": "^7.17.0",
-    "exceljs": "^3.6.0",
-    "immutable": "^4.0.0-rc.12",
     "jimp": "^0.9.3",
     "jquery": "^3.4.1",
     "json-loader": "^0.5.7",
@@ -51,7 +49,6 @@
     "popper.js": "^1.16.0",
     "printer": "git+https://github.com/SimantoR/node-printer.git",
     "promise-fs": "^2.1.1",
-    "promise-worker": "^2.0.1",
     "react": "^16.8.6",
     "react-custom-scrollbars": "^4.2.1",
     "react-datepicker": "^2.11.0",
