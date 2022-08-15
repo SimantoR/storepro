@@ -1,36 +1,33 @@
 module.exports = {
-  /* your base configuration of choice */
-  extends: ['eslint:recommended', 'plugin:react/recommended'],
-
-  // parser: 'babel-eslint',
-  parser: '@typescript-eslint/parser',
+  extends: 'erb',
+  rules: {
+    // A temporary hack related to IDE not resolving correct package.json
+    'import/no-extraneous-dependencies': 'off',
+    'import/no-unresolved': 'error',
+    'react/prop-types': 'off',
+    'react/button-has-type': 'off',
+    'react/jsx-props-no-spreading': 'off',
+    // Since React 17 and typescript 4.1 you can safely disable the rule
+    'react/react-in-jsx-scope': 'off',
+  },
   parserOptions: {
+    ecmaVersion: 2020,
     sourceType: 'module',
-    ecmaFeatures: {
-      legacyDecorators: true
-    }
-  },
-  plugins: ["@typescript-eslint"],
-  env: {
-    browser: true,
-    node: true,
-    es6: true
-  },
-  globals: {
-    __static: true
+    project: './tsconfig.json',
+    tsconfigRootDir: __dirname,
+    createDefaultProgram: true,
   },
   settings: {
-    react: {
-      version: 'detect'
-    }
+    'import/resolver': {
+      // See https://github.com/benmosher/eslint-plugin-import/issues/1396#issuecomment-575727774 for line below
+      node: {},
+      webpack: {
+        config: require.resolve('./.erb/configs/webpack.config.eslint.ts'),
+      },
+      typescript: {},
+    },
+    'import/parsers': {
+      '@typescript-eslint/parser': ['.ts', '.tsx'],
+    },
   },
-  rules: {
-    // allow anonymous component functions
-    'react/display-name': 0,
-    // disallow console and debugger in production mode
-    'no-console': process.env.NODE_ENV === 'production' ? 2 : 0,
-    'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
-    // allow spreading out properties from an object without warnings
-    'no-unused-vars': [0, { ignoreRestSiblings: true }]
-  }
-}
+};

@@ -1,53 +1,20 @@
-import React, { Component } from 'react';
-import { AppContext } from '../App';
+import clsx from 'classnames';
+import React from 'react';
 
-interface Props extends React.HTMLAttributes<HTMLButtonElement> {
-  audioSrc?: string;
-  animated?: boolean;
-  disabled?: boolean;
-}
+export default function Button(
+  props: React.ButtonHTMLAttributes<HTMLButtonElement>
+) {
+  const { className, children, ...btnProps } = props;
 
-interface State {
-  audio?: HTMLAudioElement;
-}
-
-const Button: React.FC<Props> = (props: Props) => {
-  const [audio, setAudio] = React.useState<HTMLAudioElement>(
-    props.audioSrc
-      ? new Audio(props.audioSrc)
-      : new Audio(require('../resources/btn_audio.wav'))
-  );
-
-  const context = React.useContext(AppContext);
-
-  const onClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!props.disabled) {
-      const { onClick } = props;
-      e.currentTarget.blur();
-      if (audio && context.conf.app.sound) 
-        audio.play();
-      if (onClick) 
-        onClick(e);
-    }
-  };
-
-  const {
-    children,
-    audioSrc,
-    animated,
-    className,
-    disabled,
-    ...buttonProps
-  } = props;
-
-  let _className = className ? `${className} ` : '';
-  if (animated) { _className += 'animated'; }
-  if (disabled) { _className += ' disabled'; }
   return (
-    <button {...buttonProps} className={_className} onClick={onClick}>
+    <button
+      className={clsx(
+        'bg-white border border-gray-300 hover:bg-blue-500 hover:drop-shadow hover:text-white flex flex-row items-center justify-center text-protoconn-green-vogue font-semibold uppercase font-poppins py-2 px-12 rounded focus:outline-none focus:shadow-outline transition-[background-color]',
+        className
+      )}
+      {...btnProps}
+    >
       {children}
     </button>
   );
 }
-
-export default Button;
