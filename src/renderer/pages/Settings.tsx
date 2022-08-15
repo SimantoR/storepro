@@ -1,11 +1,15 @@
 import React, { Component } from 'react';
 import { Link, NavLink, Switch, Route } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLock, faChevronCircleLeft, faUnlock } from '@fortawesome/free-solid-svg-icons';
+import {
+  faLock,
+  faChevronCircleLeft,
+  faUnlock,
+} from '@fortawesome/free-solid-svg-icons';
 import { printer as ThermalPrinter } from 'node-thermal-printer';
 import SwitchToggler from 'react-switch';
 import Scrollbars from 'react-custom-scrollbars';
-import { AppConfig, AppContext, AppConfigContext } from '../App';
+import { AppContext, AppConfigContext } from '../App';
 import InventoryPage from './Inventory';
 import { EntityManager } from 'typeorm';
 import { ROOT_PATH, logErr, saveSettings } from '../system';
@@ -14,10 +18,9 @@ import * as fs from 'promise-fs';
 import AddToInventory from '../components/AddToInventory';
 import Sales from './Sales';
 
-
 interface Props {
-  dbManager: EntityManager,
-  printer: ThermalPrinter
+  dbManager: EntityManager;
+  printer: ThermalPrinter;
 }
 
 interface State {
@@ -27,16 +30,16 @@ interface State {
 
 //#region CONSTs
 const SwitchProps = {
-  onColor: "#86d3ff",
-  onHandleColor: "#2693e6",
+  onColor: '#86d3ff',
+  onHandleColor: '#2693e6',
   handleDiameter: 30,
   uncheckedIcon: false,
   checkedIcon: false,
-  boxShadow: "0px 1px 5px rgba(0, 0, 0, 0.6)",
-  activeBoxShadow: "0px 0px 1px 10px rgba(0, 0, 0, 0.2)",
+  boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.6)',
+  activeBoxShadow: '0px 0px 1px 10px rgba(0, 0, 0, 0.2)',
   height: 20,
   width: 48,
-}
+};
 
 const Settings: React.FC<Props> = (props: Props) => {
   const context = React.useContext(AppContext);
@@ -48,7 +51,10 @@ const Settings: React.FC<Props> = (props: Props) => {
     <div className="vw-100 vh-100 bg-light">
       <div className="d-flex h-100">
         {/* Sidebar */}
-        <div className="bg-dark d-flex flex-column p-2" style={{ width: '15vw', height: '100%' }}>
+        <div
+          className="bg-dark d-flex flex-column p-2"
+          style={{ width: '15vw', height: '100%' }}
+        >
           <div>
             <Link to="/" className="btn btn-red shadow-tight btn-lg mb-2">
               <div className="h-100 d-flex justify-content-center align-items-center">
@@ -58,18 +64,32 @@ const Settings: React.FC<Props> = (props: Props) => {
           </div>
           <div className="d-flex flex-column w-100">
             <div className="my-1">
-              <NavLink exact to="/settings" className="w-100 btn btn-lg rounded btn-outline-light border-0">
+              <NavLink
+                exact
+                to="/settings"
+                className="w-100 btn btn-lg rounded btn-outline-light border-0"
+              >
                 General
-                </NavLink>
+              </NavLink>
             </div>
             <div className="my-1">
-              <NavLink to="/settings/inventory" className="w-100 btn btn-lg rounded btn-outline-light border-0">Inventory</NavLink>
+              <NavLink
+                to="/settings/inventory"
+                className="w-100 btn btn-lg rounded btn-outline-light border-0"
+              >
+                Inventory
+              </NavLink>
             </div>
             {/* <div className="my-1">
                 <NavLink to="/settings/employees" className="w-100 btn btn-lg rounded btn-outline-light border-0">Employees</NavLink>
               </div> */}
             <div className="my-1">
-              <NavLink to="/settings/sales" className="w-100 btn btn-lg rounded btn-outline-light border-0">Sales</NavLink>
+              <NavLink
+                to="/settings/sales"
+                className="w-100 btn btn-lg rounded btn-outline-light border-0"
+              >
+                Sales
+              </NavLink>
             </div>
           </div>
         </div>
@@ -93,21 +113,29 @@ const Settings: React.FC<Props> = (props: Props) => {
                       <h4 className="card-title">MISC</h4>
                       <ul className="list-group list-group-flush">
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.app.keyboard}
-                            onChange={checked => {
-                              setConf({ ...conf, app: { ...conf.app, keyboard: checked } });
+                            onChange={(checked) => {
+                              setConf({
+                                ...conf,
+                                app: { ...conf.app, keyboard: checked },
+                              });
                             }}
                           />
                           <div className="pl-2">Keyboard Mode</div>
                         </li>
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.app.sound}
-                            onChange={checked => {
-                              setConf({ ...conf, app: { ...conf.app, sound: checked } });
+                            onChange={(checked) => {
+                              setConf({
+                                ...conf,
+                                app: { ...conf.app, sound: checked },
+                              });
                             }}
                           />
                           <div className="pl-2">Sound</div>
@@ -119,48 +147,59 @@ const Settings: React.FC<Props> = (props: Props) => {
                     <div className="card-body shadow">
                       <h4 className="card-title">Lock Higher Level Access</h4>
                       <p className="card-text">
-                        This signifies a manager as requirement for voids, refunds etc.
-                        </p>
+                        This signifies a manager as requirement for voids,
+                        refunds etc.
+                      </p>
                       <ul className="list-group list-group-flush">
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             disabled={!authenticated}
                             checked={conf.manager.allowRefunds}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               conf.manager.allowRefunds = checked;
                               setConf(conf);
                             }}
                           />
-                          <div className="pl-2">
-                            Refunds
-                        </div>
+                          <div className="pl-2">Refunds</div>
                         </li>
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.allowVoids}
                             disabled={!authenticated}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               conf.manager.allowVoids = checked;
-                              setConf({ ...conf, manager: { ...conf.manager, allowVoids: checked } });
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  allowVoids: checked,
+                                },
+                              });
                             }}
                           />
                           <div className="pl-2">Voids</div>
                         </li>
                       </ul>
                       <div className="text-right pt-2">
-                        {!authenticated
-                          ? (
-                            <button className="btn btn-red shadow-tight" onClick={() => setAuth(true)}>
-                              <FontAwesomeIcon icon={faLock} />{' '}Unlock
+                        {!authenticated ? (
+                          <button
+                            className="btn btn-red shadow-tight"
+                            onClick={() => setAuth(true)}
+                          >
+                            <FontAwesomeIcon icon={faLock} /> Unlock
                           </button>
-                          ) : (
-                            <button className="btn btn-success shadow-tight" onClick={() => setAuth(false)}>
-                              <FontAwesomeIcon icon={faUnlock} />{' '}Lock
+                        ) : (
+                          <button
+                            className="btn btn-success shadow-tight"
+                            onClick={() => setAuth(false)}
+                          >
+                            <FontAwesomeIcon icon={faUnlock} /> Lock
                           </button>
-                          )
-                        }
+                        )}
                       </div>
                     </div>
                   </div>
@@ -169,20 +208,21 @@ const Settings: React.FC<Props> = (props: Props) => {
                       <h4 className="card-title">Printer &amp; Cash Drawer</h4>
                       <ul className="list-group list-group-flush">
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             // checked={cashDrawer.enabled}
                             checked={conf.manager.cashDrawer.allowAccess}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               setConf({
                                 ...conf,
                                 manager: {
                                   ...conf.manager,
                                   cashDrawer: {
                                     ...conf.manager.cashDrawer,
-                                    allowAccess: checked
-                                  }
-                                }
+                                    allowAccess: checked,
+                                  },
+                                },
                               });
                             }}
                           />
@@ -199,21 +239,38 @@ const Settings: React.FC<Props> = (props: Props) => {
                             <div className="pl-2">Require Manager for Cash Drawer</div>
                           </li> */}
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.cashDrawer.openOnSale}
-                            onChange={checked => {
-                              setConf({ ...conf, manager: { ...conf.manager, cashDrawer: { ...conf.manager.cashDrawer, openOnSale: checked } } });
+                            onChange={(checked) => {
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  cashDrawer: {
+                                    ...conf.manager.cashDrawer,
+                                    openOnSale: checked,
+                                  },
+                                },
+                              });
                             }}
                           />
                           <div className="pl-2">Open Drawer On Sale</div>
                         </li>
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.printOnSale}
-                            onChange={checked => {
-                              setConf({ ...conf, manager: { ...conf.manager, printOnSale: checked } });
+                            onChange={(checked) => {
+                              setConf({
+                                ...conf,
+                                manager: {
+                                  ...conf.manager,
+                                  printOnSale: checked,
+                                },
+                              });
                             }}
                           />
                           <div className="pl-2">Print receipt on Sale</div>
@@ -226,57 +283,60 @@ const Settings: React.FC<Props> = (props: Props) => {
                       <h4 className="card-title">Payment Options</h4>
                       <ul className="list-group list-group-flush">
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.payment.giftCards}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               setConf({
                                 ...conf,
                                 manager: {
                                   ...conf.manager,
                                   payment: {
                                     ...conf.manager.payment,
-                                    giftCards: checked
-                                  }
-                                }
+                                    giftCards: checked,
+                                  },
+                                },
                               });
                             }}
                           />
                           <div className="pl-2">Enable Gift Cards</div>
                         </li>
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.payment.loyaltyCards}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               setConf({
                                 ...conf,
                                 manager: {
                                   ...conf.manager,
                                   payment: {
                                     ...conf.manager.payment,
-                                    loyaltyCards: checked
-                                  }
-                                }
+                                    loyaltyCards: checked,
+                                  },
+                                },
                               });
                             }}
                           />
                           <div className="pl-2">Use Loyalty Cards</div>
                         </li>
                         <li className="list-group-item d-flex align-items-center">
-                          <SwitchToggler className="form-check-input"
+                          <SwitchToggler
+                            className="form-check-input"
                             {...SwitchProps}
                             checked={conf.manager.payment.USDollar}
-                            onChange={checked => {
+                            onChange={(checked) => {
                               setConf({
                                 ...conf,
                                 manager: {
                                   ...conf.manager,
                                   payment: {
                                     ...conf.manager.payment,
-                                    USDollar: checked
-                                  }
-                                }
+                                    USDollar: checked,
+                                  },
+                                },
                               });
                             }}
                           />
@@ -287,11 +347,14 @@ const Settings: React.FC<Props> = (props: Props) => {
                   </div>
                 </div>
                 <div className="p-4 text-right">
-                  <button className="btn btn-lg shadow-tight btn-success" onClick={() => {
-                    saveSettings(conf)
-                      .then(() => context.setConf(conf))
-                      .catch(err => console.error(err));
-                  }}>
+                  <button
+                    className="btn btn-lg shadow-tight btn-success"
+                    onClick={() => {
+                      saveSettings(conf)
+                        .then(() => context.setConf(conf))
+                        .catch((err) => console.error(err));
+                    }}
+                  >
                     Save All
                   </button>
                 </div>
@@ -302,6 +365,6 @@ const Settings: React.FC<Props> = (props: Props) => {
       </div>
     </div>
   );
-}
+};
 
 export default Settings;

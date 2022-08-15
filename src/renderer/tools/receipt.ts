@@ -4,6 +4,7 @@ import {
   PaymentMethod
 } from '../database/database';
 import { EntityManager, Between } from 'typeorm';
+//@ts-ignore
 import receipt from 'receipt';
 import { Dictionary } from 'linqify';
 import '../../@types/extensions';

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Switch, Route, NavLink } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Settings from './pages/Settings';
@@ -10,43 +10,9 @@ import { init, ROOT_PATH, logErr, loadSettings } from './system';
 import * as fs from 'promise-fs';
 import {
   printer as ThermalPrinter,
-  types as PrinterTypes
+  types as PrinterTypes,
 } from 'node-thermal-printer';
 import path from 'path';
-
-export interface AppConfig {
-  app: {
-    sleepAfter?: number; // seconds
-    keyboard: boolean;
-    sound: boolean;
-  };
-  manager: {
-    cashDrawer: {
-      allowAccess: boolean;
-      openOnSale: boolean;
-    };
-    payment: {
-      giftCards: boolean;
-      loyaltyCards: boolean;
-      USDollar: boolean;
-    };
-    allowRefunds: boolean;
-    allowVoids: boolean;
-    printOnSale: boolean;
-  };
-  sync: {
-    syncInterval: number; // minutes
-    encrypt: boolean; // takes paid subscription
-  };
-}
-
-interface State {
-  printer: ThermalPrinter | null;
-  product: Product | null;
-  dbManager: EntityManager | null;
-  message: string;
-  appConfig: AppConfig;
-}
 
 export interface AppConfigContext {
   conf: AppConfig;
@@ -56,48 +22,43 @@ export interface AppConfigContext {
 const defaultConf: AppConfig = {
   app: {
     keyboard: true,
-    sound: true
+    sound: true,
   },
   manager: {
     cashDrawer: {
       allowAccess: false,
-      openOnSale: true
+      openOnSale: true,
     },
     payment: {
       giftCards: false,
       loyaltyCards: false,
-      USDollar: true
+      USDollar: true,
     },
     allowRefunds: true,
     allowVoids: true,
-    printOnSale: true
+    printOnSale: true,
   },
   sync: {
     encrypt: true,
-    syncInterval: 60
-  }
+    syncInterval: 60,
+  },
 };
 
 export const AppContext = React.createContext<AppConfigContext>({
   setConf: (conf: AppConfig) => {},
-  conf: defaultConf
+  conf: defaultConf,
 });
 
-class App extends React.Component<any, State> {
-  constructor(props: any) {
-    super(props);
-    this.state = {
-      printer: null,
-      product: null,
-      dbManager: null,
-      message: '',
-      appConfig: defaultConf
-    };
-  }
+export default function App(): JSX.Element {
+  const [printer, set_printer] = useState<ThermalPrinter>();
+  const [product, set_product] = useState<Product>();
+  const [dbManager, set_dbManager] = useState<EntityManager>();
+  const [message, set_message] = useState<string>();
+  const [appConfig, set_appConfig] = useState<AppConfig>();
 
-  componentDidMount() {
+  useEffect(() => {
     Promise.resolve(init());
-    this.setState({ message: 'Loading printer...' });
+    set_message('Loading printer...');
 
     // Create task to connect to printer
     let printerTask = new Promise<ThermalPrinter>((resolve, reject) => {
@@ -105,7 +66,7 @@ class App extends React.Component<any, State> {
         const _printer = new ThermalPrinter({
           type: PrinterTypes.EPSON,
           interface: 'printer:RECEIPT_PRINTER',
-          driver: require('printer')
+          driver: require('printer'),
         });
         if (_printer) {
           resolve(_printer);
@@ -115,7 +76,7 @@ class App extends React.Component<any, State> {
       }
     });
 
-    this.setState({ message: 'Initializing ...' });
+    set_message('Initializing...');
 
     // Create task to connect to database
     let dbTask = new Promise<EntityManager>((resolve, reject) => {
@@ -126,72 +87,66 @@ class App extends React.Component<any, State> {
         .catch(reject);
     });
 
-    // Wait for database and printer to connect
-    Promise.all<ThermalPrinter, EntityManager, AppConfig>([
-      printerTask,
-      dbTask,
-      loadSettings()
-    ])
-      .then(([printer, db, conf]) => {
-        const win = remote.getCurrentWindow();
-        if (!win.isFocused()) win.show();
-
-        this.setState({
-          printer: printer,
-          dbManager: db,
-          appConfig: conf
-        });
-      })
-      .catch((err: Error) => {
-        logErr(err);
-        console.error(err);
-      });
-  }
-
-  setConf = (conf: AppConfig) => {
-    this.setState({ appConfig: conf });
-  };
-
-  render() {
-    try {
-      const { dbManager, printer, message } = this.state;
-      if (!dbManager || !printer) {
-        return (
-          <div className="d-flex flex-column justify-content-center align-items-center">
-            <ReactLoading type="balls" color="black" height="20%" width="20%" />
-          </div>
-        );
+    printerTask.then(set_printer).catch((error: Error | undefined) => {
+      if (error) {
+        logErr(error);
+        console.error(error);
       }
+      console.error('Failed to load printer');
+    });
 
+    dbTask.then(set_dbManager).catch((error: Error | undefined) => {
+      if (error) {
+        logErr(error);
+        console.error(error);
+      }
+      console.error('Failed to load db');
+    });
+
+    loadSettings()
+      .then(set_appConfig)
+      .catch((error: Error | undefined) => {
+        if (error) {
+          logErr(error);
+          console.error(error);
+        }
+        console.error('Failed to load settings');
+      });
+  }, []);
+
+  try {
+    if (!dbManager || !printer) {
       return (
-        <AppContext.Provider
-          value={{ setConf: this.setConf, conf: this.state.appConfig }}
-        >
-          <Switch>
-            <Route exact path="/">
-              <Landing dbManager={dbManager} printer={printer} />
-            </Route>
-            <Route path="/settings">
-              <Settings dbManager={dbManager} printer={printer} />
-            </Route>
-            {/* No Path */}
-            <Route>
-              <p>
-                Sorry go back to <NavLink to="/">home page</NavLink>
-              </p>
-            </Route>
-          </Switch>
-        </AppContext.Provider>
-      );
-    } catch (err) {
-      console.log(err);
-      return (
-        <div>
-          <p>Component had an error</p>
+        <div className="d-flex flex-column justify-content-center align-items-center">
+          <ReactLoading type="balls" color="black" height="20%" width="20%" />
         </div>
       );
     }
+
+    return (
+      <AppContext.Provider value={{ setConf: set_appConfig, conf: appConfig! }}>
+        <Switch>
+          <Route exact path="/">
+            <Landing dbManager={dbManager} printer={printer!} />
+          </Route>
+          <Route path="/settings">
+            <Settings dbManager={dbManager} printer={printer!} />
+          </Route>
+          {/* No Path */}
+          <Route>
+            <p>
+              Sorry go back to <NavLink to="/">home page</NavLink>
+            </p>
+          </Route>
+        </Switch>
+      </AppContext.Provider>
+    );
+  } catch (err) {
+    console.log(err);
+    return (
+      <div>
+        <p>Component had an error</p>
+      </div>
+    );
   }
 }
-
-export default App;

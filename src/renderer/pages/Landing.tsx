@@ -22,7 +22,7 @@ import {
   Product,
   Transaction,
   PaymentMethod,
-  TransactionItem
+  TransactionItem,
 } from '../database/database';
 import {
   faCogs,
@@ -40,18 +40,18 @@ import {
   faBatteryQuarter,
   faBatteryThreeQuarters,
   faChargingStation,
-  faPlug
+  faPlug,
 } from '@fortawesome/free-solid-svg-icons';
 
 receipt.config = {
   ...receipt.config,
   currency: '$',
   width: 40,
-  ruler: '-'
+  ruler: '-',
 };
 
 const httpProp = {
-  headers: { Authorization: 'BEARER' }
+  headers: { Authorization: 'BEARER' },
 };
 
 interface Props {
@@ -105,7 +105,7 @@ function getBatteryStatus(): Promise<IconDefinition> {
         }
         resolve(ico);
       })
-      .catch(err => reject(err));
+      .catch((err) => reject(err));
   });
 }
 
@@ -122,16 +122,16 @@ class Landing extends React.Component<Props, IState> {
       items: [],
       connStatus: true,
       skuInput: '',
-      keyboardInput: ''
+      keyboardInput: '',
     };
   }
 
   componentDidMount() {
     loadMenu()
-      .then(menu => {
+      .then((menu) => {
         this.setState({ menu: menu });
       })
-      .catch(err => {
+      .catch((err) => {
         if (err) {
           console.warn(err);
           logErr(err);
@@ -139,14 +139,14 @@ class Landing extends React.Component<Props, IState> {
       });
 
     getBatteryStatus()
-      .then(icon => {
+      .then((icon) => {
         this.setState({ batteryStatus: <FontAwesomeIcon icon={icon} /> });
       })
       .catch((err: Error) => logErr(err));
 
     const id = setInterval(() => {
       getBatteryStatus()
-        .then(icon => {
+        .then((icon) => {
           this.setState({ batteryStatus: <FontAwesomeIcon icon={icon} /> });
         })
         .catch((err: Error) => logErr(err));
@@ -154,7 +154,7 @@ class Landing extends React.Component<Props, IState> {
   }
 
   componentWillUnmount() {
-    this.intervals.forEach(timeout => clearInterval(timeout));
+    this.intervals.forEach((timeout) => clearInterval(timeout));
     this.intervals = [];
   }
 
@@ -175,18 +175,18 @@ class Landing extends React.Component<Props, IState> {
 
       items.push({
         product: product,
-        qty: multiplier ?? 1
+        qty: multiplier ?? 1,
       });
     }
 
     this.setState({
       items: items,
-      multiplier: undefined
+      multiplier: undefined,
     });
   };
 
   searchProduct = ({
-    currentTarget: { value }
+    currentTarget: { value },
   }: React.ChangeEvent<HTMLInputElement>) => {
     const { items, multiplier } = this.state;
     const { dbManager } = this.props;
@@ -196,13 +196,13 @@ class Landing extends React.Component<Props, IState> {
     }
     dbManager
       .findOneOrFail(Product, {
-        where: [{ sku: value }, { name: value }]
+        where: [{ sku: value }, { name: value }],
       })
-      .then(product => {
+      .then((product) => {
         if (items) {
           items.push({
             product: product,
-            qty: multiplier ?? 1
+            qty: multiplier ?? 1,
           });
         }
         this.setState({ skuInput: '', multiplier: undefined });
@@ -223,10 +223,12 @@ class Landing extends React.Component<Props, IState> {
       let newState: Partial<IState> = { paid: value };
 
       // Subtotal using costprice * qty of each item
-      let subTotal = items ? items.Sum(x => x.product.costPrice * x.qty) : 0;
+      let subTotal = items ? items.Sum((x) => x.product.costPrice * x.qty) : 0;
 
       // tax = total * (tax of each item * cost price of each item)
-      let hst_gst = round(items.Sum(x => x.product.tax * x.product.costPrice));
+      let hst_gst = round(
+        items.Sum((x) => x.product.tax * x.product.costPrice)
+      );
       let total = round(subTotal + hst_gst - (value || 0), 2);
 
       debugger;
@@ -237,14 +239,14 @@ class Landing extends React.Component<Props, IState> {
           paid: value,
           price: subTotal + hst_gst,
           paymentMethod: PaymentMethod.debit,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
 
         // create transaction items
-        let transactionItems = items.map(item => {
+        let transactionItems = items.map((item) => {
           return database.create(TransactionItem, {
             product: item.product,
-            qty: item.qty
+            qty: item.qty,
           });
         });
 
@@ -252,8 +254,8 @@ class Landing extends React.Component<Props, IState> {
 
         database
           .save(Transaction, transaction)
-          .then(result => {
-            transactionItems.forEach(t => {
+          .then((result) => {
+            transactionItems.forEach((t) => {
               t.transaction = result;
             });
 
@@ -263,9 +265,9 @@ class Landing extends React.Component<Props, IState> {
                 this.setState({ paid: value });
                 this.printReceipt(this.formatReceipt(result.id));
               })
-              .catch(err => console.log(err));
+              .catch((err) => console.log(err));
           })
-          .catch(err => console.log(err));
+          .catch((err) => console.log(err));
       }
     };
 
@@ -276,7 +278,7 @@ class Landing extends React.Component<Props, IState> {
           onClose={closePaymentWin}
           onSubmit={onSubmit}
         />
-      )
+      ),
     });
   };
 
@@ -297,7 +299,7 @@ class Landing extends React.Component<Props, IState> {
           onAdd={onAdd}
           onClose={() => this.setState({ hoverElement: undefined })}
         />
-      )
+      ),
     });
   };
 
@@ -334,25 +336,25 @@ class Landing extends React.Component<Props, IState> {
           'TASTE EAST',
           '62 Allandale Rd',
           'taste.east@hotmail.com',
-          'www.tasteeastnl.ca'
+          'www.tasteeastnl.ca',
         ],
-        align: 'center'
+        align: 'center',
       },
       { type: 'empty' },
       {
         type: 'properties',
         lines: [
           { name: 'Date', value: new Date().toString('dd/MM/yyyy hh:mm tt') },
-          { name: 'Order Number', value: transactionId }
-        ]
+          { name: 'Order Number', value: transactionId },
+        ],
       },
       {
         type: 'table',
         lines: items?.map(({ product, qty }) => ({
           item: product.name,
           qty: qty,
-          cost: product.costPrice * 100
-        }))
+          cost: product.costPrice * 100,
+        })),
       },
       // {
       //   type: 'table', lines: [
@@ -373,8 +375,8 @@ class Landing extends React.Component<Props, IState> {
         lines: [
           { name: 'Sub Total', value: '$ ' + subTotal.toFixed(2) },
           { name: 'GST/HST', value: '$ ' + hst_gst.toFixed(2) },
-          { name: 'Total', value: '$ ' + total.toFixed(2) }
-        ]
+          { name: 'Total', value: '$ ' + total.toFixed(2) },
+        ],
       },
       // { type: 'empty' },
       // {
@@ -390,10 +392,10 @@ class Landing extends React.Component<Props, IState> {
           If you have any requests or complains,
           don't forget to contact us. Have a great day!`,
         align: 'center',
-        padding: 5
+        padding: 5,
       },
       { type: 'empty' },
-      { type: 'empty' }
+      { type: 'empty' },
     ]);
 
     console.log(output);
@@ -425,9 +427,9 @@ class Landing extends React.Component<Props, IState> {
       printer.cut();
       printer.execute();
       printer.clear();
-    } catch (err) {
+    } catch (err: unknown) {
       console.log('Detected error');
-      console.warn(err.message);
+      console.warn((err as Error).message);
       logErr(err as Error);
     }
   };
@@ -500,7 +502,7 @@ class Landing extends React.Component<Props, IState> {
       multiplier,
       skuInput,
       paid,
-      hoverElement
+      hoverElement,
     } = this.state;
 
     const { dbManager: database } = this.props;
@@ -512,14 +514,14 @@ class Landing extends React.Component<Props, IState> {
       backgroundColor: '#a73f2d',
       color: '#ffffff',
       textShadow: '3px 5px 3px #7a2a1d',
-      display: 'inline-block'
+      display: 'inline-block',
     };
 
     let subTotal = items
-      ? items.Sum(item => item.product.costPrice * item.qty)
+      ? items.Sum((item) => item.product.costPrice * item.qty)
       : 0;
     // tax = total * (tax of each item * cost price of each item)
-    let hst_gst = items.Sum(x => x.product.tax * x.product.costPrice);
+    let hst_gst = items.Sum((x) => x.product.tax * x.product.costPrice);
     let total = subTotal + hst_gst - (paid || 0);
 
     return (
@@ -531,7 +533,7 @@ class Landing extends React.Component<Props, IState> {
               position: 'absolute',
               left: 0,
               zIndex: 2,
-              background: 'rgba(0, 0, 0, 0.4)'
+              background: 'rgba(0, 0, 0, 0.4)',
             }}
           >
             {hoverElement}
@@ -565,7 +567,7 @@ class Landing extends React.Component<Props, IState> {
           <div
             className="d-flex flex-column h-100 border-right"
             style={{
-              width: '55vw'
+              width: '55vw',
               // background: `center / contain no-repeat url(${requireStatic("logo.png")})`
             }}
           >
@@ -639,7 +641,7 @@ class Landing extends React.Component<Props, IState> {
                 className="btn btn-xl btn-circle text-white shadow-tight d-flex align-items-center justify-content-center"
                 style={{
                   textShadow: '3px 5px 3px #4a7485',
-                  backgroundColor: '#79bad4'
+                  backgroundColor: '#79bad4',
                 }}
               >
                 <FontAwesomeIcon icon={faCogs} />
@@ -648,7 +650,7 @@ class Landing extends React.Component<Props, IState> {
                 className="btn btn-xl btn-circle text-white shadow-tight"
                 style={{
                   textShadow: '3px 5px 3px #85684e',
-                  backgroundColor: '#c59b76'
+                  backgroundColor: '#c59b76',
                 }}
               >
                 <FontAwesomeIcon icon={faPrint} />
@@ -666,7 +668,7 @@ class Landing extends React.Component<Props, IState> {
                 className="btn btn-xl btn-circle text-white shadow-tight"
                 style={{
                   textShadow: '3px 5px 3px #7b8052',
-                  backgroundColor: '#c0c781'
+                  backgroundColor: '#c0c781',
                 }}
               >
                 <FontAwesomeIcon icon={faMoneyBill} />
@@ -676,7 +678,7 @@ class Landing extends React.Component<Props, IState> {
                 className="btn btn-xl btn-circle text-white shadow-tight"
                 style={{
                   textShadow: '3px 5px 3px #7a4b41',
-                  backgroundColor: '#c17767'
+                  backgroundColor: '#c17767',
                 }}
                 onClick={this.showPayment}
               >

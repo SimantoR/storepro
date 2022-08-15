@@ -20,7 +20,7 @@ import {
   faArrowRight,
   faMailBulk,
   faRedo,
-  faTrashAlt
+  faTrashAlt,
 } from '@fortawesome/free-solid-svg-icons';
 
 interface Props {
@@ -42,21 +42,19 @@ class InventoryPage extends Component<Props, State> {
     selected: [],
     paging: {
       page: 0,
-      totalItems: 0
-    }
-  }
+      totalItems: 0,
+    },
+  };
 
   refList = {
-    scrollable: React.createRef<Scrollbars>()
-  }
+    scrollable: React.createRef<Scrollbars>(),
+  };
 
   componentDidMount() {
     this.loadInventory();
   }
 
-  componentWillUnmount() {
-
-  }
+  componentWillUnmount() {}
 
   loadInventory = () => {
     const { database } = this.props;
@@ -71,38 +69,42 @@ class InventoryPage extends Component<Props, State> {
       database
         .find(Product, {
           where: { qty: MoreThan(0) },
-          order: { sku: 'ASC' }
+          order: { sku: 'ASC' },
         })
-        .then(products => {
+        .then((products) => {
           if (products) {
-            this.setState(prevState => ({
+            this.setState((prevState) => ({
               items: products,
-              selected: Array.from({ length: products.length }, () => false)
+              selected: Array.from({ length: products.length }, () => false),
             }));
           }
         });
-    }
+    };
 
     /**
      * Produces dummy data
      */
     const getDummyData = () => {
-      const dummyData = Array.from({ length: 25 }, (_, i) => ({
-        sku: i.toString().padStart(8, '0'),
-        name: `Product ${i}`,
-        costPrice: 2.14 * (i + 1),
-        minStock: 2 * (i + 1),
-        qty: 5 * (i + 1),
-        tax: 0.15,
-        unitType: 0
-      } as Product));
+      const dummyData = Array.from(
+        { length: 25 },
+        (_, i) =>
+          ({
+            sku: i.toString().padStart(8, '0'),
+            name: `Product ${i}`,
+            costPrice: 2.14 * (i + 1),
+            minStock: 2 * (i + 1),
+            qty: 5 * (i + 1),
+            tax: 0.15,
+            unitType: 0,
+          } as Product)
+      );
       debugger;
-      this.setState(prevState => ({
+      this.setState((prevState) => ({
         items: prevState.items ? prevState.items.concat(dummyData) : dummyData,
         paging: { ...paging, page: paging.page },
-        selected: Array.from({ length: dummyData.length }, () => false)
+        selected: Array.from({ length: dummyData.length }, () => false),
       }));
-    }
+    };
 
     getData();
     // getDummyData();
@@ -114,7 +116,7 @@ class InventoryPage extends Component<Props, State> {
 
     if (!items) return;
 
-    let tasks: Promise<any>[] = []
+    let tasks: Promise<any>[] = [];
 
     selected.forEach((s, i) => {
       if (s) {
@@ -125,54 +127,62 @@ class InventoryPage extends Component<Props, State> {
     Promise.all(tasks)
       .then(() => this.loadInventory())
       .catch((err: Error) => console.warn(err.message));
-  }
+  };
 
   exportToCsv = async () => {
     const { items, selected } = this.state;
 
-    if (!items) { // if there are no items, do nothing
+    if (!items) {
+      // if there are no items, do nothing
       console.log(items);
       return;
     }
 
     // get access to file
-    const openPrompt = (): Promise<any> => {
-      return new Promise(async (resolve, reject) => {
+    const openPrompt = (): Promise<fs.WriteStream> => {
+      return new Promise((resolve, reject) => {
         console.log('Opening dialog');
         const window = remote.getCurrentWindow();
-        const { filePath, canceled } = await remote.dialog.showSaveDialog(
-          window,
-          {
+
+        const onSaveDialog = function (args: Electron.SaveDialogReturnValue) {
+          // if the save dialog is closed or no filepath is returned, do nothing
+          const { filePath, canceled } = args;
+
+          if (canceled || !filePath) {
+            reject();
+          }
+
+          // create a write stream to filepath
+          resolve(
+            fs.createWriteStream(filePath!, {
+              encoding: 'utf8',
+              flags: 'w+',
+            })
+          );
+        };
+
+        remote.dialog
+          .showSaveDialog(window, {
             buttonLabel: 'Save',
             title: 'Save CSV',
-            filters: [{
-              name: 'Excel File',
-              extensions: ['csv', 'xlsx']
-            }, {
-              name: 'Text File',
-              extensions: ['txt', 'docx']
-            }],
+            filters: [
+              {
+                name: 'Excel File',
+                extensions: ['csv', 'xlsx'],
+              },
+              {
+                name: 'Text File',
+                extensions: ['txt', 'docx'],
+              },
+            ],
             showsTagField: false,
             nameFieldLabel: 'export',
-          }
-        );
-        // if the save dialog is closed or no filepath is returned, do nothing
-        if (canceled || !filePath) {
-          reject();
-        }
+          })
+          .then(onSaveDialog);
+      });
+    };
 
-        // create a write stream to filepath
-        resolve(fs.createWriteStream(
-          filePath!,
-          {
-            encoding: 'utf8',
-            flags: 'w+'
-          }
-        ));
-      })
-    }
-
-    let selectedItems: Product[] = []
+    let selectedItems: Product[] = [];
 
     selected.forEach((checked, i) => {
       if (checked) {
@@ -183,27 +193,22 @@ class InventoryPage extends Component<Props, State> {
     // if there are no selected items, do nothing
     if (selectedItems.length === 0) {
       const window = remote.getCurrentWindow();
-      const buttons = ['Go Back', 'Export All']
+      const buttons = ['Go Back', 'Export All'];
 
-      const {
-        checkboxChecked,
-        response: btnId
-      } = await remote.dialog.showMessageBox(
-        window,
-        {
+      const { checkboxChecked, response: btnId } =
+        await remote.dialog.showMessageBox(window, {
           message: 'Please select items',
           buttons: buttons,
           cancelId: 0,
-          defaultId: 0
-        }
-      );
+          defaultId: 0,
+        });
 
       switch (btnId) {
         case 0:
           return;
         case 1:
           console.log('Exporting all...');
-          selectedItems = items
+          selectedItems = items;
           break;
 
         default:
@@ -215,7 +220,7 @@ class InventoryPage extends Component<Props, State> {
 
     if (!fStream) return;
 
-    selectedItems.forEach(_item => {
+    selectedItems.forEach((_item) => {
       _item.costPrice = round(_item.costPrice, 2);
     });
 
@@ -228,8 +233,8 @@ class InventoryPage extends Component<Props, State> {
         { key: 'tax', header: 'Tax' },
         { key: 'costPrice', header: 'Cost Price' },
         { key: 'minStock', header: 'Min Stock' },
-        { key: 'qty', header: 'Quantity' }
-      ]
+        { key: 'qty', header: 'Quantity' },
+      ],
     });
 
     // write csv data to filestream
@@ -237,10 +242,7 @@ class InventoryPage extends Component<Props, State> {
   };
 
   loadableTable = () => {
-    const {
-      items,
-      selected
-    } = this.state;
+    const { items, selected } = this.state;
 
     if (!items) return null;
 
@@ -248,11 +250,11 @@ class InventoryPage extends Component<Props, State> {
       <InfiniScroll
         onScrollEnd={this.loadInventory}
         style={{ maxHeight: '100%', overflowY: 'scroll' }}
-        onLoading={(
+        onLoading={
           <div className="w-100 d-flex justify-content-center">
             <ReactLoading type="bars" color="black" />
           </div>
-        )}
+        }
       >
         <table className="table table-striped">
           <thead className="shadow-tight">
@@ -260,7 +262,7 @@ class InventoryPage extends Component<Props, State> {
               <th>
                 <input
                   type="checkbox"
-                  checked={selected.All(x => x === true)}
+                  checked={selected.All((x) => x === true)}
                   onChange={({ currentTarget: { checked } }) =>
                     this.setState({ selected: selected.fill(checked) })
                   }
@@ -278,7 +280,15 @@ class InventoryPage extends Component<Props, State> {
           <tbody>
             {items && items.length > 0 ? (
               items.map((item, i) => (
-                <tr key={i} className="text-center" style={item.qty < item.minStock ? { background: 'rgba(186, 0, 0, 0.1)' } : undefined}>
+                <tr
+                  key={i}
+                  className="text-center"
+                  style={
+                    item.qty < item.minStock
+                      ? { background: 'rgba(186, 0, 0, 0.1)' }
+                      : undefined
+                  }
+                >
                   <td>
                     <input
                       type="checkbox"
@@ -301,19 +311,19 @@ class InventoryPage extends Component<Props, State> {
                 </tr>
               ))
             ) : (
-                <p>No Data Found</p>
-              )}
+              <p>No Data Found</p>
+            )}
           </tbody>
         </table>
       </InfiniScroll>
-    )
+    );
   };
 
   render() {
     const {
       items,
       paging: { page },
-      hoverElem
+      hoverElem,
     } = this.state;
 
     return (
@@ -325,15 +335,13 @@ class InventoryPage extends Component<Props, State> {
               position: 'absolute',
               left: 0,
               zIndex: 1,
-              background: 'rgba(0, 0, 0, 0.4)'
+              background: 'rgba(0, 0, 0, 0.4)',
             }}
           >
             {hoverElem}
           </div>
         )}
-        <div
-          className="p-2 d-flex justify-content-between align-items-center w-100 border-bottom"
-        >
+        <div className="p-2 d-flex justify-content-between align-items-center w-100 border-bottom">
           <div className="btn-toolbar w-100 justify-content-start">
             <Link
               to="/settings/inventory/add"
@@ -341,7 +349,10 @@ class InventoryPage extends Component<Props, State> {
             >
               <FontAwesomeIcon icon={faPlus} />
             </Link>
-            <Button className="btn btn-light btn-circle btn-lg shadow-tight" onClick={this.deleteItems}>
+            <Button
+              className="btn btn-light btn-circle btn-lg shadow-tight"
+              onClick={this.deleteItems}
+            >
               <FontAwesomeIcon icon={faTrashAlt} />
             </Button>
             <Button className="btn btn-light btn-circle btn-lg shadow-tight">
@@ -378,9 +389,7 @@ class InventoryPage extends Component<Props, State> {
             </Button>
           </div>
         </div>
-        {items && (
-          <this.loadableTable />
-        )}
+        {items && <this.loadableTable />}
       </div>
     );
   }
