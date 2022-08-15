@@ -7,20 +7,22 @@ declare module 'node-thermal-printer' {
   /**
    * Supported printer types are EPSON and STAR
    */
-  enum PrinterTypes {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  enum types {
     EPSON = 'epson',
     STAR = 'star',
   }
 
-  class ThermalPrinter {
-    printerTypes: PrinterTypes;
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  class printer {
+    printerTypes: types;
 
     /**
      * Constructor
      * @param Object config (type, interface, width, characterSet, removeSpecialCharacters, options)
      */
     constructor(config: {
-      type?: PrinterTypes;
+      type?: types;
       interface: string;
       width?: number;
       characterSet?: string;

@@ -1,7 +1,10 @@
 import { ipcMain as ipc } from 'electron';
 
 import printerDriver from '@thiagoelg/node-printer';
-import { PrinterTypes, ThermalPrinter } from 'node-thermal-printer';
+import {
+  printer as ThermalPrinter,
+  types as PrinterTypes,
+} from 'node-thermal-printer';
 
 const thermalPrinter: ThermalPrinter = new ThermalPrinter({
   type: PrinterTypes.EPSON,
