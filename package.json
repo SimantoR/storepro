@@ -109,18 +109,23 @@
   },
   "dependencies": {
     "classnames": "^2.3.1",
+    "datejs": "^1.0.0-rc3",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.7",
     "electron-updater": "^5.0.1",
+    "linqify": "^1.2.2",
+    "moment": "^2.29.4",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
-    "react-router-dom": "^6.3.0"
+    "react-router-dom": "^6.3.0",
+    "typeorm": "^0.3.7"
   },
   "devDependencies": {
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.6",
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.1",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^13.2.0",
+    "@types/datejs": "^0.0.32",
     "@types/jest": "^27.5.1",
     "@types/node": "17.0.33",
     "@types/react": "^18.0.9",
@@ -188,8 +193,8 @@
     "webpack-merge": "^5.8.0"
   },
   "build": {
-    "productName": "ElectronReact",
-    "appId": "org.erb.ElectronReact",
+    "productName": "StorePro",
+    "appId": "org.erb.StorePro",
     "asar": true,
     "asarUnpack": "**\\*.{node,dll}",
     "files": [

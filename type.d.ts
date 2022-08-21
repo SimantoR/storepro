@@ -421,3 +421,9 @@ declare module '@thiagoelg/node-printer' {
     | 'PENDING'
     | 'ABORTED';
 }
+
+interface CartItem {
+  name: string;
+  price: number;
+  quantity: number;
+}
