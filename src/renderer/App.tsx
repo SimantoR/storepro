@@ -1,16 +1,11 @@
-import { MemoryRouter as Router, Route, Routes } from 'react-router-dom';
 import './App.css';
-import Dashboard from './Dashboard';
 import AppProvider from './providers/app';
+import Router from './Router';
 
 export default function App() {
   return (
     <AppProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-        </Routes>
-      </Router>
+      <Router />
     </AppProvider>
   );
 }
